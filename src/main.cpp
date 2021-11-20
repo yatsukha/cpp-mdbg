@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <limits>
 #include <string>
@@ -31,8 +32,8 @@ template<typename... Args>
 int main(int argc, char** argv) {
   using namespace ::std::string_literals;
 
-  if (argc != 2) {
-    terminate("Missing path cmdline argument.");
+  if (argc != 3) {
+    terminate("Required arguments: <input> <gfa output>");
   }
 
   if (!::std::filesystem::exists(argv[1])) {
@@ -43,10 +44,12 @@ int main(int argc, char** argv) {
   auto parser =
       fast::CreateFastaParser<::biosoup::NucleicAcid>(argv[1]);
   auto const seqs = parser.Parse();
+
+  ::std::cout << "Loaded sequences." << "\n";
  
   // 10th chromosome expected to be the only sequence
   auto const& ch10 = *seqs[0];
-  auto const cutoff = 50'000;
+  auto const cutoff = 5'000;
 
   auto start_time = ::std::chrono::high_resolution_clock::now();
 
@@ -54,7 +57,7 @@ int main(int argc, char** argv) {
   auto const reads = ::mdbg::sim::simulate(
     ch10,
     cutoff,
-    ::mdbg::sim::configurations::PacBioHiFi
+    ::mdbg::sim::configurations::TestConfiguration
   );
 
   // calculate min and avg coverage
@@ -90,7 +93,7 @@ int main(int argc, char** argv) {
 
   start_time = ::std::chrono::high_resolution_clock::now();
 
-  auto const k = 10;
+  auto const k = 15;
   auto graph = ::mdbg::construct(reads, k);
 
   time_taken =
@@ -98,26 +101,29 @@ int main(int argc, char** argv) {
       ::std::chrono::high_resolution_clock::now() - start_time
     );
 
-  auto const print_node = [](auto iter) {
-    for (::std::size_t i = 0; i < k - 1; ++i) {
-      ::std::cout << static_cast<::std::int32_t>(*iter);
-      ++iter;
+  auto const print_node = [](auto iter, auto& stream) {
+    for (::std::size_t i = 0; i < k - 1; ++i, ++iter) {
+      stream << ::biosoup::kNucleotideDecoder[*iter];
     }
   };
 
-  for (::std::size_t i = 0; i < 10; ++i) {
-    ::std::unordered_map<::std::size_t, ::std::size_t> counts;
-    print_node(graph[i].first);
-    ::std::cout << ":" << "\n";
-    for (auto nb : graph[i].second) {
-      ++counts[nb];
-    }
+  ::std::ofstream out{argv[2], ::std::ios_base::out | ::std::ios_base::trunc};
+  if (!out.is_open()) {
+    terminate("Could not create/truncate output file ", argv[2]);
+  }
 
-    for (auto [nb, count] : counts) {
-      ::std::cout << "  ";
-      print_node(graph[nb].first);
-      ::std::cout << " -> " << count << " times" << "\n";
-    }
+  for (::std::size_t i = 0; i < graph.size(); ++i) {
+    out << "S\t" << i << "\t";
+    print_node(graph[i].first, out);
+    out << "\n"; 
+  }
+
+  for (::std::size_t i = 0; i < graph.size(); ++i) {
+    for (auto const next : graph[i].second) {
+      out << "L\t" << i << "\t+\t"
+          << next << "\t+\t" 
+          << (k - 1) << "M" << "\n";
+    } 
   }
 
   ::std::cout << "dbg graph with k " << k 
