@@ -100,6 +100,12 @@ namespace mdbg::sim {
       /*.min_coverage  =*/  30ul,
     };
 
+    auto inline constexpr TestConfiguration = config{
+      /*.read_length =*/    200ul,
+      /*.read_deviation =*/ 20ul, 
+      /*.min_coverage  =*/  30ul,
+    };
+
   }
 
   struct read {
