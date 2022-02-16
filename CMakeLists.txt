@@ -5,12 +5,17 @@ project(mdbg)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address,undefined")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_DEBUG} -g")
 
 add_executable(sim src/sim/main.cpp)
 add_executable(mdbg 
   src/main.cpp 
   src/mdbg/minimizers.cpp)
+
+add_executable(playground
+  src/testing.cpp)
 
 include(FetchContent)
 
@@ -21,7 +26,20 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(fast)
 
-target_link_libraries(sim PRIVATE fast)
-target_link_libraries(mdbg PRIVATE fast)
-target_include_directories(sim PRIVATE "include")
-target_include_directories(mdbg PRIVATE "include" "vendor/ntHash")
+target_link_libraries(sim PRIVATE fast biosoup::biosoup)
+target_link_libraries(mdbg PRIVATE fast biosoup::biosoup)
+target_include_directories(sim PRIVATE "include" "vendor/biosoup/include")
+target_include_directories(mdbg PRIVATE 
+  "include" "vendor/ntHash" "vendor/biosoup/include")
+target_include_directories(playground PRIVATE "include" "vendor/ntHash")
+
+## tests
+
+add_executable(test
+  test/nucleic_acid_iter.cpp)
+
+find_package(Catch2 2 REQUIRED)
+
+target_link_libraries(test PRIVATE Catch2::Catch2WithMain fast biosoup::biosoup)
+target_include_directories(test PRIVATE 
+  "include" "vendor/ntHash" "vendor/biosoup/include")

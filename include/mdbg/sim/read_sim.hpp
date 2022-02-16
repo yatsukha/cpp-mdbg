@@ -1,6 +1,8 @@
 #pragma once
 
-#include <biosoup/nucleic_acid.hpp>
+#include <mdbg/nucleic_acid_iter.hpp>
+
+#include <biosoup_include.hpp>
 
 #include <cstdint>
 #include <iostream> // TODO:
@@ -9,78 +11,6 @@
 #include <vector>
 
 namespace mdbg::sim {
-  
-  namespace detail {
-
-    using biosoup_sequence_t = decltype(::biosoup::NucleicAcid::deflated_data);
-    
-    struct nucleic_acid_iter {
-      ::std::uint8_t constexpr static inner_acids = 32;
-
-      biosoup_sequence_t::value_type const* data;
-      ::std::uint8_t inner_index;
-
-      ::std::uint8_t operator*() noexcept {
-        return ((*data) >> (inner_index * 2)) & 0b11;
-      }
-
-      nucleic_acid_iter& operator++() noexcept {
-        if (++inner_index >= inner_acids) /*[[unlikely]]*/ {
-          ++data;
-          inner_index = 0;
-        }
-        return *this;
-      }
-
-      nucleic_acid_iter& operator+=(::std::int32_t diff) noexcept {
-        auto const ptr_skips = diff / inner_acids;
-        data += ptr_skips;
-        diff -= inner_acids * ptr_skips;
-
-        if (diff > 0) {
-          inner_index += static_cast<decltype(inner_index)>(diff);
-          if (inner_index >= inner_acids) {
-            ++data;
-            inner_index -= inner_acids;
-          }
-        } else {
-          auto new_inner = static_cast<::std::int32_t>(inner_index) + diff;
-          if (new_inner < 0) {
-            --data;
-            new_inner += inner_acids; 
-          }
-          inner_index = static_cast<decltype(inner_index)>(new_inner);
-        }
-        return *this;
-      }
-
-      friend nucleic_acid_iter operator+(
-        nucleic_acid_iter const& self, ::std::int32_t diff
-      ) noexcept {
-        nucleic_acid_iter copy = self;
-        copy += diff;
-        return copy;
-      }
-
-      friend ::std::size_t operator-(
-        nucleic_acid_iter const& l,
-        nucleic_acid_iter const& r
-      ) noexcept {
-        return static_cast<::std::size_t>(
-          (l.data - r.data) * nucleic_acid_iter::inner_acids +
-            static_cast<::std::int32_t>(l.inner_index) -
-            static_cast<::std::int32_t>(r.inner_index));
-      }
-
-      friend bool operator==(
-        nucleic_acid_iter const& l,
-        nucleic_acid_iter const& r
-      ) noexcept {
-        return l.data == r.data && l.inner_index == r.inner_index;
-      }
-    };
-
-  }
 
   struct config {
     // expected read length
@@ -112,8 +42,8 @@ namespace mdbg::sim {
     // offset form the start of the complete assembly
     ::std::size_t offset;
     // beginning of the simulated read
-    detail::nucleic_acid_iter begin;
-    detail::nucleic_acid_iter end;
+    nucleic_acid_iter begin;
+    nucleic_acid_iter end;
   };
 
   inline ::std::vector<read> simulate(
@@ -159,7 +89,9 @@ namespace mdbg::sim {
         }
         
         auto read_end = 
-          read_begin + static_cast<decltype(read_begin)>(read_length_gen(mt));
+          read_begin 
+            + static_cast<decltype(read_begin)>(
+              ::std::max(read_length_gen(mt), 0.f));
 
         
         if (read_end - read_begin < min_len) {
@@ -170,20 +102,8 @@ namespace mdbg::sim {
 
         read = {
           read_begin,
-          detail::nucleic_acid_iter{
-            sequence.deflated_data.data()
-              + static_cast<::std::int32_t>(
-                  read_begin / detail::nucleic_acid_iter::inner_acids),
-            static_cast<::std::uint8_t>(
-              read_begin % detail::nucleic_acid_iter::inner_acids)
-          },
-          detail::nucleic_acid_iter{
-            sequence.deflated_data.data()
-              + static_cast<::std::int32_t>(
-                  read_end / detail::nucleic_acid_iter::inner_acids),
-            static_cast<::std::uint8_t>(
-              read_end % detail::nucleic_acid_iter::inner_acids)
-          },
+          nucleic_acid_iter{sequence, read_begin}, 
+          nucleic_acid_iter{sequence, read_end}
         };
 
         break;

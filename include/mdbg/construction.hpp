@@ -1,7 +1,8 @@
 #include <functional>
 #include <mdbg/trie.hpp>
 #include <mdbg/sim/read_sim.hpp>
-#include <biosoup/nucleic_acid.hpp>
+
+#include <biosoup_include.hpp>
 
 namespace mdbg {
 
@@ -11,8 +12,8 @@ namespace mdbg {
   
     inline ::std::reference_wrapper<dbg_trie_t> get_end_trie(
       dbg_trie_t& trie,
-      sim::detail::nucleic_acid_iter begin,
-      sim::detail::nucleic_acid_iter end
+      nucleic_acid_iter begin,
+      nucleic_acid_iter end
     ) noexcept {
       ::std::reference_wrapper<dbg_trie_t> curr = trie;
 
@@ -42,7 +43,7 @@ namespace mdbg {
     dbg_trie_t trie;
 
     ::std::vector<::std::pair<
-      sim::detail::nucleic_acid_iter, ::std::vector<::std::size_t>
+      nucleic_acid_iter, ::std::vector<::std::size_t>
     >> dbg_nodes;
 
     for (auto const [_, read_begin, read_end] : reads) {

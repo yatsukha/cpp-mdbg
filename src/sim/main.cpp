@@ -10,13 +10,8 @@
 #include <string_view>
 #include <unordered_map>
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wconversion"
-#pragma GCC diagnostic ignored "-Wfloat-conversion"
-#pragma GCC diagnostic ignored "-Wparentheses"
-#include <fast/fast.hpp>
-#include <biosoup/nucleic_acid.hpp>
-#pragma GCC diagnostic pop
+#include <fast_include.hpp>
+#include <biosoup_include.hpp>
 
 #include <mdbg/sim/read_sim.hpp>
 #include <mdbg/construction.hpp>
@@ -50,16 +45,18 @@ int main(int argc, char** argv) {
 
   ::std::cout << "loaded sequences in: "
               << timer.reset_ms() << " ms" << "\n";
- 
+
   // 10th chromosome expected to be the only sequence
   auto const& ch10 = *seqs[0];
-  auto const cutoff = 5'000;
+  auto const cutoff = ::std::min(ch10.inflated_len, 500'000u);
+
+  ::std::cout << "size of ch10: " << ch10.inflated_len << "\n";
 
   // simulate reads similar to PacBio HiFi
   auto const reads = ::mdbg::sim::simulate(
     ch10,
     cutoff,
-    ::mdbg::sim::configurations::TestConfiguration
+    ::mdbg::sim::configurations::PacBioHiFi
   );
 
   // calculate min and avg coverage
@@ -95,7 +92,7 @@ int main(int argc, char** argv) {
   for (auto [offset, begin, end] : reads) {
     out << ">" << ch10.name << "|" << offset << "|" << ::std::to_string(end - begin);
     ::std::size_t column = 0;
-    while (!(begin == end)) {
+    while (begin != end) {
       if (column++ % 80 == 0) {
         out << "\n";
       }
@@ -105,45 +102,6 @@ int main(int argc, char** argv) {
     out << "\n";
   }
 
-  ::std::cout << "written simulated reads to: " << argv[2] << "\n";
-
-  //start_time = ::std::chrono::high_resolution_clock::now();
-
-  //auto const k = 15;
-  //auto graph = ::mdbg::construct(reads, k);
-
-  //time_taken =
-  //  ::std::chrono::duration_cast<::std::chrono::milliseconds>(
-  //    ::std::chrono::high_resolution_clock::now() - start_time
-  //  );
-
-  //auto const print_node = [](auto iter, auto& stream) {
-  //  for (::std::size_t i = 0; i < k - 1; ++i, ++iter) {
-  //    stream << ::biosoup::kNucleotideDecoder[*iter];
-  //  }
-  //};
-
-  //::std::ofstream out{argv[2], ::std::ios_base::out | ::std::ios_base::trunc};
-  //if (!out.is_open()) {
-  //  terminate("Could not create/truncate output file ", argv[2]);
-  //}
-
-  //for (::std::size_t i = 0; i < graph.size(); ++i) {
-  //  out << "S\t" << i << "\t";
-  //  print_node(graph[i].first, out);
-  //  out << "\n"; 
-  //}
-
-  //for (::std::size_t i = 0; i < graph.size(); ++i) {
-  //  for (auto const next : graph[i].second) {
-  //    out << "L\t" << i << "\t+\t"
-  //        << next << "\t+\t" 
-  //        << (k - 1) << "M" << "\n";
-  //  } 
-  //}
-
-  //::std::cout << "dbg graph with k " << k 
-  //            << " and size " << graph.size()
-  //            << "\n";
-  //::std::cout << "construction time: " << time_taken.count() << " ms" << "\n";
+  ::std::cout << "written simulated reads to " << argv[2] 
+              << " in  " << timer.reset_ms() << " ms " << "\n";
 }
