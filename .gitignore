@@ -1,4 +1,9 @@
-build
+*.txt
+*.sh
+data/
+.cache/
+build/
+release_build/
 # Created by https://www.toptal.com/developers/gitignore/api/linux,c++,cmake,git
 # Edit at https://www.toptal.com/developers/gitignore?templates=linux,c++,cmake,git
 
