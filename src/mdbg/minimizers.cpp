@@ -59,12 +59,12 @@ namespace mdbg {
     ::std::string buffer(l, '\0');
     cartesian_product(buffer, 0, [&m, d](::std::string const& lmer) {
       // it is faster to check if a lmer is canonical
-      // than to calculate hashes and check that
+      // than to calculate both regular and reverse-complement hashes
       if (canonical(lmer)) {
         auto const hash = ::NTF64(lmer.data(), static_cast<unsigned>(lmer.size()));
         auto const density = 
           static_cast<double>(hash) 
-            / static_cast<double>(::std::numeric_limits<::std::uint64_t>::max());
+            / static_cast<double>(::std::numeric_limits<decltype(hash)>::max());
 
         if (density <= d) {
           m.to_hash[lmer] = hash;

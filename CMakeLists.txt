@@ -12,7 +12,8 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -g")
 add_executable(sim src/sim/main.cpp)
 add_executable(mdbg 
   src/main.cpp 
-  src/mdbg/minimizers.cpp)
+  src/mdbg/minimizers.cpp
+  src/mdbg/construction.cpp)
 
 add_executable(playground
   src/testing.cpp)

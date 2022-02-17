@@ -2,6 +2,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -14,7 +15,6 @@
 #include <fast_include.hpp>
 #include <biosoup_include.hpp>
 
-#include <mdbg/sim/read_sim.hpp>
 #include <mdbg/construction.hpp>
 #include <mdbg/util.hpp>
 #include <mdbg/minimizers.hpp>
@@ -22,6 +22,7 @@
 
 ::std::atomic_uint32_t biosoup::NucleicAcid::num_objects{0};
 
+// TODO: program options - https://github.com/jarro2783/cxxopts/tree/v3.0.0
 int main(int argc, char** argv) {
   if (argc != 2) {
     ::mdbg::terminate("Required arguments: <input reads>");
@@ -38,17 +39,17 @@ int main(int argc, char** argv) {
       fast::CreateFastaParser<::std::string>(argv[1]);
   auto const seqs = parser.Parse();
 
-  ::std::cout << "loaded " << seqs.size() << " sequences in "
-              << timer.reset_ms() << " ms" << "\n";
+  ::std::printf(
+    "loaded %lu sequences in %ld ms\n", seqs.size(), timer.reset_ms());
 
-  auto constexpr l = 10;
-  auto constexpr d = 0.0008;
+  auto constexpr l = 7;
+  auto constexpr d = 0.008;
 
   auto const minimizers = ::mdbg::pick_minimizers(l, d);
 
-  ::std::cout << "picked " << minimizers.from_hash.size() 
-              << " minimizers in " << timer.reset_ms()
-              << " ms" << "\n";
+  ::std::printf(
+    "picked %lu minimizers of length %d in %ld ms\n",
+    minimizers.from_hash.size(), l, timer.reset_ms());
 
   ::std::vector<::std::vector<::mdbg::detected_minimizer>> detected;
   detected.reserve(seqs.size());
@@ -62,23 +63,31 @@ int main(int argc, char** argv) {
   }
 
   sum /= seqs.size();
-
-  ::std::cout << "detected minimizers in " << timer.reset_ms() 
-              << " ms" << "\n";
-
-  ::std::cout << "minimizers per read (minimizer length = " << l
-              << ", density = " << d << "):" << "\n";
-
-  ::std::cout << "  average: " << sum << "\n";
-
+  auto const time = timer.reset_ms();
   ::std::sort(statistics.begin(), statistics.end());
 
-  ::std::cout << "  median:  "
-              << statistics[statistics.size() / 2] << "\n";
+  ::std::printf(
+    "detected minimizers in %ld ms\n"
+    "minimizers per read (l = %d, d = %f):\n"
+    "  average:         %lu\n"
+    "  median:          %lu\n"
+    "  99th percentile: %lu\n",
+    time,
+    l, d,
+    sum,
+    statistics[statistics.size() / 2],
+    statistics[
+      static_cast<::std::size_t>(
+        static_cast<double>(statistics.size()) * (1.0 - 0.99))
+    ]
+  );
 
-  ::std::cout << "  99th:    "
-              << statistics[
-                static_cast<::std::size_t>(
-                  static_cast<double>(statistics.size()) * (1.0 - 0.99))
-              ] << "\n";
+  timer.reset_ms();
+
+  auto constexpr k = 5;
+  auto graph = ::mdbg::construct(detected, k);
+
+  ::std::printf(
+    "assembled de Bruijn graph (k = %d) with %lu nodes in %ld ms\n",
+    k, graph.size(), timer.reset_ms());
 }

@@ -20,13 +20,16 @@ namespace mdbg {
   minimizers pick_minimizers(::std::size_t const l, double d) noexcept;
 
   struct detected_minimizer {
+    // TODO: is this needed?
     ::std::size_t read;
     ::std::size_t offset;
 
     ::std::uint64_t minimizer;
   };
 
-  ::std::vector<detected_minimizer> detect_minimizers(
+  using read_minimizers_t = ::std::vector<detected_minimizer>;
+
+  read_minimizers_t detect_minimizers(
     ::std::string const& read,
     ::std::size_t const read_id,
     minimizers const& ms
