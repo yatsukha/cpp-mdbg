@@ -1,3 +1,4 @@
+#include "biosoup/nucleic_acid.hpp"
 #include <atomic>
 #include <chrono>
 #include <cstdint>
@@ -47,20 +48,23 @@ int main(int argc, char** argv) {
               << timer.reset_ms() << " ms" << "\n";
 
   // 10th chromosome expected to be the only sequence
-  auto const& ch10 = *seqs[0];
-  auto const cutoff = ::std::min(ch10.inflated_len, 500'000u);
+  auto const start_cutoff = 500'000u;
+  auto const section_length = 500'000u;
+
+  auto const ch10 = 
+    ::biosoup::NucleicAcid{"", seqs[0]->InflateData().substr(start_cutoff, section_length)};
 
   ::std::cout << "size of ch10: " << ch10.inflated_len << "\n";
 
   // simulate reads similar to PacBio HiFi
   auto const reads = ::mdbg::sim::simulate(
     ch10,
-    cutoff,
+    section_length,
     ::mdbg::sim::configurations::PacBioHiFi
   );
 
   // calculate min and avg coverage
-  ::std::vector<::std::int32_t> coverage(cutoff + 1, 0);
+  ::std::vector<::std::int32_t> coverage(section_length + 1, 0);
 
   for (auto const& r : reads) {
     ++coverage[r.offset];

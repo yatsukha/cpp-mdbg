@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cstdint>
@@ -40,25 +41,44 @@ int main(int argc, char** argv) {
   ::std::cout << "loaded " << seqs.size() << " sequences in "
               << timer.reset_ms() << " ms" << "\n";
 
-  auto constexpr l = 7;
-  auto constexpr d = 0.08;
+  auto constexpr l = 10;
+  auto constexpr d = 0.0008;
 
   auto const minimizers = ::mdbg::pick_minimizers(l, d);
 
-  ::std::cout << "picked minimizers in " << timer.reset_ms()
+  ::std::cout << "picked " << minimizers.from_hash.size() 
+              << " minimizers in " << timer.reset_ms()
               << " ms" << "\n";
 
   ::std::vector<::std::vector<::mdbg::detected_minimizer>> detected;
   detected.reserve(seqs.size());
 
   ::std::size_t sum = 0;
+  ::std::vector<::std::size_t> statistics(seqs.size());
   for (::std::size_t i = 0; i < seqs.size(); ++i) {
     detected.emplace_back(::mdbg::detect_minimizers(*seqs[i], i, minimizers));
+    statistics[i] = detected.back().size();
     sum += detected.back().size();
   }
 
   sum /= seqs.size();
 
-  ::std::cout << "average detected minimizers per read: " << sum
-              << " in " << timer.reset_ms() << " ms" << "\n";
+  ::std::cout << "detected minimizers in " << timer.reset_ms() 
+              << " ms" << "\n";
+
+  ::std::cout << "minimizers per read (minimizer length = " << l
+              << ", density = " << d << "):" << "\n";
+
+  ::std::cout << "  average: " << sum << "\n";
+
+  ::std::sort(statistics.begin(), statistics.end());
+
+  ::std::cout << "  median:  "
+              << statistics[statistics.size() / 2] << "\n";
+
+  ::std::cout << "  99th:    "
+              << statistics[
+                static_cast<::std::size_t>(
+                  static_cast<double>(statistics.size()) * (1.0 - 0.99))
+              ] << "\n";
 }

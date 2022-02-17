@@ -15,17 +15,16 @@ namespace mdbg {
   void cartesian_product(
     ::std::string& curr,
     ::std::size_t index,
-    ::std::size_t limit,
     ::std::function<void(::std::string const&)> f
   ) noexcept {
-    if (index == limit) {
+    if (index == curr.size()) {
       f(curr);
       return;
     }
     char constexpr static arr[] = {'A', 'C', 'T', 'G'};
     for (auto const c : arr) {
       curr[index] = c;
-      cartesian_product(curr, index + 1, limit, f);
+      cartesian_product(curr, index + 1, f);
     }
   }
 
@@ -58,7 +57,7 @@ namespace mdbg {
     m.to_hash.reserve(total_strings);
 
     ::std::string buffer(l, '\0');
-    cartesian_product(buffer, 0, l, [&m, d](::std::string const& lmer) {
+    cartesian_product(buffer, 0, [&m, d](::std::string const& lmer) {
       // it is faster to check if a lmer is canonical
       // than to calculate hashes and check that
       if (canonical(lmer)) {
@@ -87,11 +86,11 @@ namespace mdbg {
 
     for (::std::size_t i = 0; i < seq.size() - ms.length + 1; ++i) {
       auto const canonical = i 
-        ? NTC64(
+        ? ::NTC64(
             static_cast<unsigned char>(seq[i - 1]), 
             static_cast<unsigned char>(seq[i - 1 + ms.length]),
             static_cast<unsigned>(ms.length), hash, rc_hash)
-        : NTC64(
+        : ::NTC64(
             seq.data(), static_cast<unsigned>(ms.length),
             hash, rc_hash);
 
