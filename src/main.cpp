@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <atomic>
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <iostream>
@@ -23,8 +24,10 @@ int main(int argc, char** argv) {
   auto const minimizers = ::mdbg::pick_minimizers(opts.l, opts.d);
 
   ::std::printf(
-    "picked %lu minimizers of length %lu in %ld ms\n",
-    minimizers.from_hash.size(), opts.l, timer.reset_ms());
+    "picked %lu (out of %lu) minimizers (l = %lu, d = %f) in %ld ms\n",
+    minimizers.from_hash.size(), 
+    static_cast<::std::size_t>(::std::pow(4, opts.l)),
+    opts.l, opts.d, timer.reset_ms());
 
   ::std::vector<::std::vector<::mdbg::detected_minimizer>> detected(seqs.size());
 
@@ -43,18 +46,16 @@ int main(int argc, char** argv) {
 
   ::std::printf(
     "detected minimizers in %ld ms\n"
-    "minimizers per read (l = %lu, d = %f):\n"
+    "minimizers per read:\n"
     "  average:         %lu\n"
     "  median:          %lu\n"
     "  99th percentile: %lu\n",
     time,
-    opts.l, opts.d,
     sum,
     statistics[statistics.size() / 2],
     statistics[
       static_cast<::std::size_t>(
-        static_cast<double>(statistics.size()) * (1.0 - 0.99))]
-  );
+        static_cast<double>(statistics.size()) * (1.0 - 0.99))]);
 
   timer.reset_ms();
   auto graph = ::mdbg::construct(detected, opts.k);
