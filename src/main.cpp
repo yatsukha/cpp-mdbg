@@ -1,12 +1,9 @@
-#include "mdbg/io.hpp"
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
 #include <cstdio>
-#include <fstream>
 #include <iostream>
 #include <string>
-#include <unordered_map>
 
 #include <mdbg/construction.hpp>
 #include <mdbg/util.hpp>
