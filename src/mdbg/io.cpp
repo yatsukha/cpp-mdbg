@@ -1,10 +1,11 @@
 #include <mdbg/io.hpp>
 #include <mdbg/util.hpp>
 
-#include <fast/seq_factory.hpp>
 #include <fast_include.hpp>
 
 #include <filesystem>
+
+::std::atomic_uint32_t biosoup::NucleicAcid::num_objects{0};
 
 namespace mdbg {
 

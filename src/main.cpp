@@ -11,8 +11,6 @@
 #include <mdbg/io.hpp>
 #include <mdbg/opt.hpp>
 
-::std::atomic_uint32_t biosoup::NucleicAcid::num_objects{0};
-
 int main(int argc, char** argv) {
   auto const opts = ::mdbg::command_line_options::parse(argc, argv); 
   auto timer = ::mdbg::timer{};
