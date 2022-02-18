@@ -1,10 +1,10 @@
-#pragma once
+#include <mdbg/io.hpp>
+#include <mdbg/util.hpp>
 
 #include <fast/seq_factory.hpp>
 #include <fast_include.hpp>
 
-#include <memory>
-#include <string>
+#include <filesystem>
 
 namespace mdbg {
 
@@ -26,7 +26,6 @@ namespace mdbg {
       return string_fasta_factory{}.CreateSequence(name_begin, name_end, begin, end);
     }
   };
-
 }
 
 namespace fast {
@@ -44,3 +43,16 @@ namespace fast {
   };
 
 }
+
+namespace mdbg {
+
+  ::std::vector<::std::unique_ptr<::std::string>> 
+  load_sequences(::std::string const& input) noexcept {
+    if (!::std::filesystem::exists(input)) {
+      ::mdbg::terminate("Could not locate given file: ", input);
+    }
+    return ::fast::CreateFastaParser<::std::string>(input.c_str()).Parse();
+  }
+
+}
+

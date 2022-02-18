@@ -13,7 +13,9 @@ add_executable(sim src/sim/main.cpp)
 add_executable(mdbg 
   src/main.cpp 
   src/mdbg/minimizers.cpp
-  src/mdbg/construction.cpp)
+  src/mdbg/construction.cpp
+  src/mdbg/opt.cpp
+  src/mdbg/io.cpp)
 
 add_executable(playground
   src/testing.cpp)
