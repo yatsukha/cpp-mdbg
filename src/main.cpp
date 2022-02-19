@@ -68,7 +68,7 @@ int main(int argc, char** argv) {
 
   if (!opts.dry_run) {
     ::std::ofstream out{opts.output};
-    ::std::printf("writting...\r"); ::std::fflush(stdout);
+    ::std::printf("writing...\r"); ::std::fflush(stdout);
     if (!out.is_open()
         || !(out << graph)) {
       ::mdbg::terminate("Unable to write graph to ", opts.output);
