@@ -3,7 +3,9 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
+#include <fstream>
 #include <iostream>
+#include <ostream>
 #include <string>
 
 #include <mdbg/construction.hpp>
@@ -63,4 +65,17 @@ int main(int argc, char** argv) {
   ::std::printf(
     "assembled de Bruijn graph (k = %lu) with %lu nodes in %ld ms\n",
     opts.k, graph.size(), timer.reset_ms());
+
+  if (!opts.dry_run) {
+    ::std::ofstream out{opts.output};
+    ::std::printf("writting...\r"); ::std::fflush(stdout);
+    if (!out.is_open()
+        || !(out << graph)) {
+      ::mdbg::terminate("Unable to write graph to ", opts.output);
+    }
+    ::std::printf(
+      "wrote de Bruijn graph to '%s' in %ld ms\n", 
+      opts.output.c_str(),
+      timer.reset_ms());
+  }
 }

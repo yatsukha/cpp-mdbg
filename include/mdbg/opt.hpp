@@ -10,6 +10,8 @@ namespace mdbg {
     ::std::size_t l;
     double d;
 
+    bool dry_run;
+
     ::std::string input;
     ::std::string output;
 

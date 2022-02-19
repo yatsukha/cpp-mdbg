@@ -1,4 +1,4 @@
-#include "mdbg/util.hpp"
+#include <mdbg/util.hpp>
 #include <mdbg/opt.hpp>
 
 #include <cxxopts.hpp>
@@ -14,6 +14,10 @@ namespace mdbg {
         ::cxxopts::value<::std::size_t>()->default_value("7"))
       ("d,density", "Density of the universe minimizers.",
         ::cxxopts::value<double>()->default_value("0.008"))
+      ("dry-run", "Dry run, do not write to output.",
+        ::cxxopts::value<bool>()
+          ->default_value("0")
+          ->implicit_value("1"))
       ("i,input", "Input reads.", ::cxxopts::value<::std::string>())
       ("o,output", "Output for the graph formatted as GFA.",
         ::cxxopts::value<::std::string>());
@@ -33,6 +37,8 @@ namespace mdbg {
       rv.k = r["k"].as<decltype(rv.k)>();
       rv.l = r["l"].as<decltype(rv.l)>();
       rv.d = r["d"].as<decltype(rv.d)>();
+
+      rv.dry_run = r["dry-run"].as<decltype(rv.dry_run)>();
 
       rv.input  = r["i"].as<decltype(rv.input)>();
       rv.output = r["o"].as<decltype(rv.output)>();

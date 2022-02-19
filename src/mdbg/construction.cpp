@@ -58,4 +58,18 @@ namespace mdbg {
     return nodes;
   }
 
+  ::std::ostream& operator<<(
+    ::std::ostream& out, 
+    de_bruijn_graph_t const& graph
+  ) noexcept {
+    for (::std::size_t i = 0; i < graph.size(); ++i) {
+      // TODO: print the sequence captured by minimizers?
+      out << "S\t" << i << "\t*" << "\n";
+      for (auto const j : graph[i].second) {
+        out << "L\t" << i << "\t+\t" << j << "\t+\t*" << "\n";
+      }
+    }
+    return out;
+  }
+
 }
