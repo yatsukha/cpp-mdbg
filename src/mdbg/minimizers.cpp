@@ -94,7 +94,7 @@ namespace mdbg {
             seq.data(), static_cast<unsigned>(ms.length),
             hash, rc_hash);
 
-      if (ms.from_hash.find(canonical) != ms.from_hash.end()) {
+      if (ms.from_hash.count(canonical)) {
         minimizers.push_back({
           read_id, 
           i,

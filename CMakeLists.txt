@@ -33,7 +33,11 @@ target_link_libraries(sim PRIVATE fast biosoup::biosoup)
 target_link_libraries(mdbg PRIVATE fast biosoup::biosoup)
 target_include_directories(sim PRIVATE "include" "vendor/biosoup/include")
 target_include_directories(mdbg PRIVATE 
-  "include" "vendor/ntHash" "vendor/biosoup/include" "vendor/cxxopts/include")
+  "include" 
+  "vendor/ntHash"
+  "vendor/biosoup/include" 
+  "vendor/cxxopts/include"
+  "vendor/robin-map/include")
 target_include_directories(playground PRIVATE "include" "vendor/ntHash")
 
 ## tests

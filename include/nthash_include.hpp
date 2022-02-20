@@ -5,6 +5,6 @@
 #pragma GCC diagnostic ignored "-Wconversion"
 #pragma GCC diagnostic ignored "-Wfloat-conversion"
 #pragma GCC diagnostic ignored "-Wparentheses"
-#include <ntHash/nthash.hpp>
-#include <ntHash/ntHashIterator.hpp>
+#include <nthash.hpp>
+#include <ntHashIterator.hpp>
 #pragma GCC diagnostic pop

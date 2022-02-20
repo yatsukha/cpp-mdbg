@@ -14,7 +14,6 @@
 #include <biosoup_include.hpp>
 
 #include <mdbg/sim/read_sim.hpp>
-#include <mdbg/construction.hpp>
 #include <mdbg/util.hpp>
 
 ::std::atomic_uint32_t biosoup::NucleicAcid::num_objects{0};

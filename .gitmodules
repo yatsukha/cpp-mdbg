@@ -1,5 +1,5 @@
 [submodule "vendor/ntHash/ntHash"]
-	path = vendor/ntHash/ntHash
+	path = vendor/ntHash
 	url = https://github.com/bcgsc/ntHash
 [submodule "vendor/biosoup"]
 	path = vendor/biosoup

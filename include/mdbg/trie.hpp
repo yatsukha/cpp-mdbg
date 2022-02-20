@@ -5,17 +5,16 @@
 #include <memory>
 #include <optional>
 
+#include <tsl/robin_map.h>
+
 namespace mdbg {
 
   template<typename T>
   struct trie {
-    // TODO: unordered_map is a really bad hash map implementation
-    // either add better allocator, or different implementation:
-    //  - https://martin.ankerl.com/2019/04/01/hashmap-benchmarks-01-overview/
     using key_type   = T;
     using child_type = ::std::unique_ptr<trie>;
 
-    ::std::unordered_map<key_type, child_type> children;
+    ::tsl::robin_map<key_type, child_type> children;
 
     auto& operator[](key_type const& index) {
       if (!children.count(index)) {
