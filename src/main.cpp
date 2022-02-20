@@ -14,6 +14,8 @@
 #include <mdbg/io.hpp>
 #include <mdbg/opt.hpp>
 
+#include <thread_pool_include.hpp>
+
 int main(int argc, char** argv) {
   auto const opts = ::mdbg::command_line_options::parse(argc, argv); 
   auto timer = ::mdbg::timer{};
@@ -30,14 +32,22 @@ int main(int argc, char** argv) {
     minimizers.from_hash.size(), 
     static_cast<::std::size_t>(::std::pow(4, opts.l)),
     opts.l, opts.d, timer.reset_ms());
-
+  
   ::std::vector<::std::vector<::mdbg::detected_minimizer>> detected(seqs.size());
+  ::thread_pool pool{};
+
+  for (::std::size_t i = 0; i < detected.size(); ++i) {
+    pool.submit([&seqs, &detected, &minimizers, i]{
+      detected[i] = ::mdbg::detect_minimizers(*seqs[i], i, minimizers);
+    });
+  }
+
+  pool.wait_for_tasks();
 
   ::std::size_t sum = 0;
   ::std::vector<::std::size_t> statistics(seqs.size());
 
   for (::std::size_t i = 0; i < seqs.size(); ++i) {
-    detected[i] = ::mdbg::detect_minimizers(*seqs[i], i, minimizers);
     statistics[i] = detected[i].size();
     sum += detected[i].size();
   }
@@ -51,13 +61,15 @@ int main(int argc, char** argv) {
     "minimizers per read:\n"
     "  average:         %lu\n"
     "  median:          %lu\n"
-    "  99th percentile: %lu\n",
+    "  99th percentile: %lu\n"
+    "  min:             %lu\n",
     time,
     sum,
     statistics[statistics.size() / 2],
     statistics[
       static_cast<::std::size_t>(
-        static_cast<double>(statistics.size()) * (1.0 - 0.99))]);
+        static_cast<double>(statistics.size()) * (1.0 - 0.999))],
+    statistics.front());
 
   timer.reset_ms();
   auto graph = ::mdbg::construct(detected, opts.k);

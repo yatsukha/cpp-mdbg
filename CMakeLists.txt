@@ -29,16 +29,21 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(fast)
 
+find_package(Threads REQUIRED)
+
 target_link_libraries(sim PRIVATE fast biosoup::biosoup)
-target_link_libraries(mdbg PRIVATE fast biosoup::biosoup)
+target_link_libraries(mdbg PRIVATE fast biosoup::biosoup Threads::Threads)
+
 target_include_directories(sim PRIVATE "include" "vendor/biosoup/include")
+target_include_directories(playground PRIVATE "include" "vendor/ntHash")
+
 target_include_directories(mdbg PRIVATE 
   "include" 
   "vendor/ntHash"
   "vendor/biosoup/include" 
   "vendor/cxxopts/include"
-  "vendor/robin-map/include")
-target_include_directories(playground PRIVATE "include" "vendor/ntHash")
+  "vendor/robin-map/include"
+  "vendor/thread-pool")
 
 ## tests
 
