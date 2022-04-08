@@ -20,6 +20,10 @@ int main(int argc, char** argv) {
   auto const opts = ::mdbg::command_line_options::parse(argc, argv); 
   auto timer = ::mdbg::timer{};
 
+  if (opts.dry_run) {
+    ::std::fprintf(stderr, "### DRY RUN ###\n");
+  }
+
   auto const seqs = ::mdbg::load_sequences(opts.input);
 
   ::std::printf(
@@ -45,31 +49,31 @@ int main(int argc, char** argv) {
   pool.wait_for_tasks();
 
   ::std::size_t sum = 0;
-  ::std::vector<::std::size_t> statistics(seqs.size());
+  ::std::vector<::std::size_t> stats(seqs.size());
 
   for (::std::size_t i = 0; i < seqs.size(); ++i) {
-    statistics[i] = detected[i].size();
+    stats[i] = detected[i].size();
     sum += detected[i].size();
   }
 
   sum /= seqs.size();
   auto const time = timer.reset_ms();
-  ::std::sort(statistics.begin(), statistics.end());
+  ::std::sort(stats.begin(), stats.end());
 
   ::std::printf(
     "detected minimizers in %ld ms\n"
     "minimizers per read:\n"
-    "  average:         %lu\n"
-    "  median:          %lu\n"
-    "  99th percentile: %lu\n"
-    "  min:             %lu\n",
+    "  average:           %lu\n"
+    "  median:            %lu\n"
+    "  99.9th percentile: %lu\n"
+    "  min:               %lu\n",
     time,
     sum,
-    statistics[statistics.size() / 2],
-    statistics[
+    stats[stats.size() / 2],
+    stats[
       static_cast<::std::size_t>(
-        static_cast<double>(statistics.size()) * (1.0 - 0.999))],
-    statistics.front());
+        static_cast<double>(stats.size()) * (1.0 - 0.999))],
+    stats.front());
 
   timer.reset_ms();
   auto graph = ::mdbg::construct(detected, opts.k);
@@ -81,10 +85,21 @@ int main(int argc, char** argv) {
   if (!opts.dry_run) {
     ::std::ofstream out{opts.output};
     ::std::printf("writing...\r"); ::std::fflush(stdout);
-    if (!out.is_open()
-        || !(out << graph)) {
+    if (!out.is_open()) {
+      ::mdbg::terminate("Unable to open/create given output file ", opts.output);
+    }
+  
+    out << graph
+        << "# cpp-mdbg de Bruijn minimizer graph"
+        << "\n"
+        << "# "
+        << opts
+        << "\n";
+    
+    if (!out) {
       ::mdbg::terminate("Unable to write graph to ", opts.output);
     }
+
     ::std::printf(
       "wrote de Bruijn graph to '%s' in %ld ms\n", 
       opts.output.c_str(),

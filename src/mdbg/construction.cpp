@@ -62,9 +62,13 @@ namespace mdbg {
     ::std::ostream& out, 
     de_bruijn_graph_t const& graph
   ) noexcept {
+    // some tools won't allow edges L that use sequences S defined later
+    // so we define them all at once
+    for (::std::size_t i = 0; i < graph.size(); ++i) {
+      out << "S\t" << i << "\t*" << "\n";
+    }
     for (::std::size_t i = 0; i < graph.size(); ++i) {
       // TODO: print the sequence captured by minimizers?
-      out << "S\t" << i << "\t*" << "\n";
       for (auto const j : graph[i].second) {
         out << "L\t" << i << "\t+\t" << j << "\t+\t*" << "\n";
       }

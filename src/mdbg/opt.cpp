@@ -3,12 +3,14 @@
 
 #include <cxxopts.hpp>
 
+#include <filesystem>
+
 namespace mdbg {
 
   command_line_options command_line_options::parse(int argc, char** argv) noexcept {
     ::cxxopts::Options options("mdbg", "C++ minimizer de Bruijn assembler.");
     options.add_options()
-      ("k,kmers", "Length of a \"sequence\" to use for the de Bruijn graph",
+      ("k,kmers", "Length of window of minimizers to use for the de Bruijn graph.",
         ::cxxopts::value<::std::size_t>()->default_value("5"))
       ("l,letters", "Length of the minimizers.",
         ::cxxopts::value<::std::size_t>()->default_value("7"))
@@ -23,7 +25,7 @@ namespace mdbg {
         ::cxxopts::value<::std::string>());
 
     options.parse_positional({"input", "output", ""});
-    options.positional_help("input output");
+    options.positional_help("input.fastx output.gfa");
 
     if (argc <= 1) {
       ::mdbg::terminate(options.help());
@@ -47,6 +49,19 @@ namespace mdbg {
     }
 
     return rv;
+  }
+
+  ::std::ostream& operator<<(
+    ::std::ostream& out, command_line_options const& opts
+
+  ) noexcept {
+    out << "command_line_options(k=" << opts.k
+        << ", l=" << opts.l
+        << ", d=" << opts.d
+        << ", input=" << ::std::filesystem::absolute(opts.input)
+        << ", output=" << ::std::filesystem::absolute(opts.output)
+        << ")";
+    return out;
   }
 
 }

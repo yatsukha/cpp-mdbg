@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ostream>
 #include <string>
 #include <cstdint>
 
@@ -16,6 +17,9 @@ namespace mdbg {
     ::std::string output;
 
     static command_line_options parse(int argc, char** argv) noexcept;
+
+    friend ::std::ostream& operator<<(
+      ::std::ostream&, command_line_options const&) noexcept;
   };
 
 }

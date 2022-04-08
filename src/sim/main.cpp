@@ -93,11 +93,8 @@ int main(int argc, char** argv) {
 
   for (auto [offset, begin, end] : reads) {
     out << ">" << ch10.name << "|" << offset << "|" << ::std::to_string(end - begin);
-    ::std::size_t column = 0;
+    out << "\n";
     while (begin != end) {
-      if (column++ % 80 == 0) {
-        out << "\n";
-      }
       out << ::biosoup::kNucleotideDecoder[*begin];
       ++begin;
     }
