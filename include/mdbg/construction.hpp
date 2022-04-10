@@ -1,5 +1,6 @@
 #include <mdbg/trie.hpp>
 #include <mdbg/minimizers.hpp>
+#include <mdbg/io.hpp>
 
 #include <functional>
 #include <ostream>
@@ -23,11 +24,16 @@ namespace mdbg {
         // and it's out edges
         ::std::vector<::std::size_t>>>;
 
-  ::std::ostream& operator<<(::std::ostream&, de_bruijn_graph_t const&) noexcept;
-
   de_bruijn_graph_t construct(
     ::std::vector<read_minimizers_t> const& minimizers,
     ::std::size_t const k
+  ) noexcept;
+
+  void write_gfa(
+    ::std::ostream& out,
+    de_bruijn_graph_t const& graph,
+    sequences_t const& reads,
+    bool const write_sequences
   ) noexcept;
 
 }

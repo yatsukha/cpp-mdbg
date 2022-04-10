@@ -1,5 +1,6 @@
 #include <cassert>
 #include <functional>
+
 #include <mdbg/construction.hpp>
 
 namespace mdbg {
@@ -58,22 +59,63 @@ namespace mdbg {
     return nodes;
   }
 
-  ::std::ostream& operator<<(
-    ::std::ostream& out, 
-    de_bruijn_graph_t const& graph
+  void write_gfa(
+    ::std::ostream& out,
+    de_bruijn_graph_t const& graph,
+    sequences_t const& reads,
+    bool const write_sequences
   ) noexcept {
+    out << "H\tVN:Z:1.0" << "\n";
+
     // some tools won't allow edges L that use sequences S defined later
     // so we define them all at once
     for (::std::size_t i = 0; i < graph.size(); ++i) {
-      out << "S\t" << i << "\t*" << "\n";
+      auto const [begin, end] = graph[i].first;
+      auto const len = (end - 1)->offset - begin->offset;
+
+      out << "S\t" << i << "\t";
+
+      if (write_sequences) {
+        auto const& read = *reads[begin->read];
+        out.write(
+          read.data() + begin->offset, 
+          static_cast<::std::streamsize>(len));
+      } else {
+        out << "*";
+      }
+
+      out << "\t"
+          << "LN:i:" << len
+          << "\n";
     }
+
     for (::std::size_t i = 0; i < graph.size(); ++i) {
-      // TODO: print the sequence captured by minimizers?
+      // calculate the length of N - 1 suffix of prefix
+      // in other words the shared part equal to the
+      // prefix N - 1 of the node we are connecting to
+      auto [prefix_begin, prefix_end] = graph[i].first;
+
+      ++prefix_begin;
+      --prefix_end;
+
+      auto const prefix_len = prefix_end->offset - prefix_begin->offset;
+      assert(prefix_len > 0);
+
       for (auto const j : graph[i].second) {
-        out << "L\t" << i << "\t+\t" << j << "\t+\t*" << "\n";
+        auto [suffix_begin, suffix_end] = graph[j].first;
+        suffix_end -= 2;
+
+        auto const suffix_len = suffix_end->offset - suffix_begin->offset;
+        assert(suffix_len > 0);
+
+        // TODO: unsubstantiated
+        auto const minimizer_span = ::std::min(prefix_len, suffix_len);
+
+        out << "L\t" << i << "\t+\t" << j << "\t+\t"
+            << minimizer_span << "M" 
+            << "\n";
       }
     }
-    return out;
   }
 
 }

@@ -18,7 +18,6 @@ namespace mdbg {
   minimizers pick_minimizers(::std::size_t const l, double d) noexcept;
 
   struct detected_minimizer {
-    // TODO: is this needed?
     ::std::size_t read;
     ::std::size_t offset;
 

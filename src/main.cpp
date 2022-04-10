@@ -88,9 +88,10 @@ int main(int argc, char** argv) {
     if (!out.is_open()) {
       ::mdbg::terminate("Unable to open/create given output file ", opts.output);
     }
-  
-    out << graph
-        << "# cpp-mdbg de Bruijn minimizer graph"
+
+    ::mdbg::write_gfa(out, graph, seqs, opts.sequences);
+
+    out << "# cpp-mdbg de Bruijn minimizer graph"
         << "\n"
         << "# "
         << opts

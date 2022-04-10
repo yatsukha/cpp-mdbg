@@ -12,6 +12,7 @@ namespace mdbg {
     double d;
 
     bool dry_run;
+    bool sequences;
 
     ::std::string input;
     ::std::string output;

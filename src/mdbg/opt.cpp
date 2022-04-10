@@ -20,6 +20,11 @@ namespace mdbg {
         ::cxxopts::value<bool>()
           ->default_value("0")
           ->implicit_value("1"))
+      ("s,sequences", 
+        "Output sequences contained within minimizers in output GFA.",
+        ::cxxopts::value<bool>()
+          ->default_value("0")
+          ->implicit_value("1"))
       ("i,input", "Input reads.", ::cxxopts::value<::std::string>())
       ("o,output", "Output for the graph formatted as GFA.",
         ::cxxopts::value<::std::string>());
@@ -41,6 +46,7 @@ namespace mdbg {
       rv.d = r["d"].as<decltype(rv.d)>();
 
       rv.dry_run = r["dry-run"].as<decltype(rv.dry_run)>();
+      rv.sequences = r["sequences"].as<decltype(rv.sequences)>();
 
       rv.input  = r["i"].as<decltype(rv.input)>();
       rv.output = r["o"].as<decltype(rv.output)>();
@@ -53,11 +59,12 @@ namespace mdbg {
 
   ::std::ostream& operator<<(
     ::std::ostream& out, command_line_options const& opts
-
   ) noexcept {
     out << "command_line_options(k=" << opts.k
         << ", l=" << opts.l
         << ", d=" << opts.d
+        << ", dry_run=" << opts.dry_run
+        << ", sequences=" << opts.sequences
         << ", input=" << ::std::filesystem::absolute(opts.input)
         << ", output=" << ::std::filesystem::absolute(opts.output)
         << ")";

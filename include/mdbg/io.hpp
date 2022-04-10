@@ -6,7 +6,8 @@
 
 namespace mdbg {
 
-  ::std::vector<::std::unique_ptr<::std::string>> 
-  load_sequences(::std::string const&) noexcept;
+  using sequences_t = ::std::vector<::std::unique_ptr<::std::string>>;
+
+  sequences_t load_sequences(::std::string const&) noexcept;
 
 }
