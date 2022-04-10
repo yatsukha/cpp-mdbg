@@ -17,8 +17,8 @@ add_executable(mdbg
   src/mdbg/opt.cpp
   src/mdbg/io.cpp)
 
-add_executable(playground
-  src/testing.cpp)
+add_executable(resolve
+  src/resolve/main.cpp)
 
 include(FetchContent)
 
@@ -35,7 +35,6 @@ target_link_libraries(sim PRIVATE fast biosoup::biosoup)
 target_link_libraries(mdbg PRIVATE fast biosoup::biosoup Threads::Threads)
 
 target_include_directories(sim PRIVATE "include" "vendor/biosoup/include")
-target_include_directories(playground PRIVATE "include" "vendor/ntHash")
 
 target_include_directories(mdbg PRIVATE 
   "include" 
@@ -44,6 +43,11 @@ target_include_directories(mdbg PRIVATE
   "vendor/cxxopts/include"
   "vendor/robin-map/include"
   "vendor/thread-pool")
+
+target_include_directories(resolve PRIVATE
+  "include"
+  "vendor/cxxopts/include"
+  "vendor/robin-map/include")
 
 ## tests
 
