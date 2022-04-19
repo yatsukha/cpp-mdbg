@@ -1,121 +1,128 @@
-#include <cassert>
-#include <functional>
-
+#include <mdbg/opt.hpp>
 #include <mdbg/construction.hpp>
+#include <mdbg/util.hpp>
+
+#include <cassert>
+#include <cstdint>
+#include <functional>
 
 namespace mdbg {
 
-  auto& get_end_trie(
-    dbg_trie_t& trie,
-    minimizer_iter_t begin,
-    minimizer_iter_t const end
+  ::std::size_t calculate_length(
+    decltype(detail::compact_minimizer::minimizer) begin,
+    ::std::size_t const length,
+    ::std::size_t const l
   ) noexcept {
-    auto* curr = &trie;
-    while (begin != end) {
-      curr = &(*curr)[begin->minimizer];
-      ++begin;
-    }
-    return *curr;
-  }
-
-  de_bruijn_graph_t construct(
-    ::std::vector<read_minimizers_t> const& minimizers,
-    ::std::size_t const k
-  ) noexcept {
-    assert(k > 1);
-
-    dbg_trie_t trie{};
-    de_bruijn_graph_t nodes{};
-
-    auto const get_node = 
-      [&trie, &nodes](auto&& begin, auto&& end) {
-        auto& trie_node = get_end_trie(trie, begin, end);
-        if (!trie_node.opt_element) {
-          trie_node.opt_element = nodes.size();
-          nodes.push_back({{begin, end}, {}});
-        }
-        return *trie_node.opt_element;
-      };
-
-    auto const delta = static_cast<minimizer_iter_t::difference_type>(k - 1);
-
-    for (auto const& read_minimizers : minimizers) {
-      if (read_minimizers.size() < k) {
-        continue;
-      }
-
-      auto const end = read_minimizers.end() - delta + 1;
-
-      auto iter = read_minimizers.begin();
-      auto left = get_node(iter, iter + delta);
-
-      while (++iter != end) {
-        auto right = get_node(iter, iter + delta);
-        nodes[left].second.push_back(right);
-        left = right;
-      }
-    }
-
-    return nodes;
+      // inclusive
+      auto const end = begin + static_cast<::std::int64_t>(length - 1);
+      return end->offset - begin->offset + l;
   }
 
   void write_gfa(
     ::std::ostream& out,
     de_bruijn_graph_t const& graph,
     sequences_t const& reads,
-    bool const write_sequences
+    command_line_options const& opts
   ) noexcept {
     out << "H\tVN:Z:1.0" << "\n";
 
-    // some tools won't allow edges L that use sequences S defined later
-    // so we define them all at once
-    for (::std::size_t i = 0; i < graph.size(); ++i) {
-      auto const [begin, end] = graph[i].first;
-      auto const len = (end - 1)->offset - begin->offset;
+    ::tsl::robin_map<
+      detail::compact_minimizer, 
+      ::std::size_t,
+      detail::compact_minimizer_hash,
+      detail::compact_minimizer_eq
+    > indexes;
 
-      out << "S\t" << i << "\t";
+    auto get_index = [&indexes, index = 0](auto&& key) mutable -> ::std::size_t {
+      auto const [iter, is_inserted] = indexes.try_emplace(key, index);
+      index += is_inserted;
+      return iter.value();
+    };
 
-      if (write_sequences) {
+    for (auto const& [key, unused] : graph) {
+      auto const begin = key.minimizer;
+      auto const len   = calculate_length(key.minimizer, key.length, opts.l);
+      
+      out << "S\t" << get_index(key) << "\t";
+      if (opts.sequences) {
         auto const& read = *reads[begin->read];
-        out.write(
-          read.data() + begin->offset, 
+        out.write(read.data() + begin->offset,
           static_cast<::std::streamsize>(len));
-      } else {
-        out << "*";
       }
 
       out << "\t"
-          << "LN:i:" << len
+          << "LN:i" << len
           << "\n";
     }
 
-    for (::std::size_t i = 0; i < graph.size(); ++i) {
-      // calculate the length of N - 1 suffix of prefix
-      // in other words the shared part equal to the
-      // prefix N - 1 of the node we are connecting to
-      auto [prefix_begin, prefix_end] = graph[i].first;
+    for (auto const& [key, value] : graph) {
+      auto const prefix_len = 
+        calculate_length(key.minimizer + 1, key.length - 1, opts.l);
 
-      ++prefix_begin;
-      --prefix_end;
+      for (auto const& out_key : value) {
+        auto const suffix_len =
+          calculate_length(out_key.minimizer, out_key.length - 1, opts.l);
 
-      auto const prefix_len = prefix_end->offset - prefix_begin->offset;
-      assert(prefix_len > 0);
-
-      for (auto const j : graph[i].second) {
-        auto [suffix_begin, suffix_end] = graph[j].first;
-        suffix_end -= 2;
-
-        auto const suffix_len = suffix_end->offset - suffix_begin->offset;
-        assert(suffix_len > 0);
-
-        // TODO: unsubstantiated
-        auto const minimizer_span = ::std::min(prefix_len, suffix_len);
-
-        out << "L\t" << i << "\t+\t" << j << "\t+\t"
-            << minimizer_span << "M" 
+        out << "L\t" << get_index(key) 
+            << "\t+\t" << get_index(out_key) << "\t+\t"
+            << ::std::max(prefix_len, suffix_len) << "M" // TODO: min/max?
             << "\n";
       }
     }
+
+    out << "# cpp-mdbg de Bruijn minimizer graph"
+        << "\n"
+        << "# "
+        << opts
+        << "\n";
+    
+    if (!out) {
+      ::mdbg::terminate("unable to write graph to ", opts.output);
+    }
+  }
+
+  de_bruijn_graph_t construct(
+    ::std::vector<read_minimizers_t> const& minimizers,
+    ::std::size_t const k
+  ) noexcept {
+    auto const overlap_length = k - 1;
+    if (k < 2) {
+      ::mdbg::terminate("k should be at least 2");
+    }
+
+    de_bruijn_graph_t graph;
+
+    for (auto const& read_minimizers : minimizers) {
+      if (read_minimizers.size() < k) {
+        continue;
+      }
+
+      detail::compact_minimizer current_window{
+        read_minimizers.begin(),
+        overlap_length,
+        0
+      };
+
+      for (::std::size_t i = 0; i < overlap_length; ++i) {
+        current_window.cached_hash ^= read_minimizers[i].minimizer;
+      }
+
+      auto current_iter = graph.insert({current_window, {}}).first;
+      
+      for (::std::size_t i = 1; 
+           i < read_minimizers.size() - overlap_length + 1; ++i) {
+
+        ++current_window.minimizer;
+        current_window.cached_hash 
+          ^= read_minimizers[i - 1].minimizer
+          ^  read_minimizers[i + overlap_length - 1].minimizer;
+
+        current_iter.value().push_back(current_window);
+        current_iter = graph.insert({current_window, {}}).first;
+      }
+    }
+
+    return graph;
   }
 
 }

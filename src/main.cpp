@@ -76,6 +76,7 @@ int main(int argc, char** argv) {
     stats.front());
 
   timer.reset_ms();
+
   auto graph = ::mdbg::construct(detected, opts.k);
 
   ::std::printf(
@@ -86,20 +87,10 @@ int main(int argc, char** argv) {
     ::std::ofstream out{opts.output};
     ::std::printf("writing...\r"); ::std::fflush(stdout);
     if (!out.is_open()) {
-      ::mdbg::terminate("Unable to open/create given output file ", opts.output);
+      ::mdbg::terminate("unable to open/create given output file ", opts.output);
     }
 
-    ::mdbg::write_gfa(out, graph, seqs, opts.sequences);
-
-    out << "# cpp-mdbg de Bruijn minimizer graph"
-        << "\n"
-        << "# "
-        << opts
-        << "\n";
-    
-    if (!out) {
-      ::mdbg::terminate("Unable to write graph to ", opts.output);
-    }
+    ::mdbg::write_gfa(out, graph, seqs, opts);
 
     ::std::printf(
       "wrote de Bruijn graph to '%s' in %ld ms\n", 
