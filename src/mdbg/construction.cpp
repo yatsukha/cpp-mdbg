@@ -59,7 +59,7 @@ namespace mdbg {
       auto const prefix_len = 
         calculate_length(key.minimizer + 1, key.length - 1, opts.l);
 
-      for (auto const& out_key : value) {
+      for (auto const& out_key : value.out_edges) {
         auto const suffix_len =
           calculate_length(out_key.minimizer, out_key.length - 1, opts.l);
 
@@ -108,6 +108,7 @@ namespace mdbg {
       }
 
       auto current_iter = graph.insert({current_window, {}}).first;
+      current_iter.value().read_references.push_back(read_minimizers.begin());
       
       for (::std::size_t i = 1; 
            i < read_minimizers.size() - overlap_length + 1; ++i) {
@@ -117,8 +118,12 @@ namespace mdbg {
           ^= read_minimizers[i - 1].minimizer
           ^  read_minimizers[i + overlap_length - 1].minimizer;
 
-        current_iter.value().push_back(current_window);
+        current_iter.value().out_edges.push_back(current_window);
+
         current_iter = graph.insert({current_window, {}}).first;
+        current_iter.value().read_references.push_back(
+          read_minimizers.begin() + 
+            static_cast<detail::minimizer_iter_t::difference_type>(i));
       }
     }
 

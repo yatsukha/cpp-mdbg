@@ -70,7 +70,8 @@ namespace mdbg {
 
     struct dbg_node {
       ::std::vector<compact_minimizer> out_edges;
-      //::std::size_t id = gen_id();
+      // metadata
+      ::std::vector<minimizer_iter_t> read_references;
     };
 
   }
@@ -78,7 +79,7 @@ namespace mdbg {
   using de_bruijn_graph_t = 
     ::tsl::robin_map<
       detail::compact_minimizer, 
-      ::std::vector<detail::compact_minimizer>, 
+      detail::dbg_node,
       detail::compact_minimizer_hash,
       detail::compact_minimizer_eq
     >;
