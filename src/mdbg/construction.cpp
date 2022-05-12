@@ -81,8 +81,41 @@ namespace mdbg {
     }
   }
 
+  void merge_graphs(
+    ::std::vector<de_bruijn_graph_t>::iterator begin,
+    ::std::vector<de_bruijn_graph_t>::iterator end
+  ) noexcept {
+    if (begin == end) {
+      return;
+    }
+
+    auto& merged = *begin;
+
+    while (++begin != end) {
+      auto& other = *begin;
+      
+      for (auto const& [key, value] : other) {
+        auto& data = merged[key];
+
+        data.out_edges.insert(
+          data.out_edges.end(), 
+          value.out_edges.begin(),
+          value.out_edges.end());
+
+        data.read_references.insert(
+            data.read_references.end(),
+            value.read_references.begin(),
+            value.read_references.end());
+      }
+      
+      // force free
+      de_bruijn_graph_t{}.swap(other);
+    }
+  }
+
   de_bruijn_graph_t construct(
-    ::std::vector<read_minimizers_t> const& minimizers,
+    ::std::vector<read_minimizers_t>::const_iterator begin,
+    ::std::vector<read_minimizers_t>::const_iterator end,
     ::std::size_t const k
   ) noexcept {
     auto const overlap_length = k - 1;
@@ -92,7 +125,8 @@ namespace mdbg {
 
     de_bruijn_graph_t graph;
 
-    for (auto const& read_minimizers : minimizers) {
+    while (begin != end) {
+      auto const& read_minimizers = *(begin++);
       if (read_minimizers.size() < k) {
         continue;
       }

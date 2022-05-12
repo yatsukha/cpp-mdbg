@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
 
   // 10th chromosome expected to be the only sequence
   auto const start_cutoff = 50'000'000u;
-  auto const section_length = 5'000'000u;
+  auto const section_length = 50'000'000u;
 
   auto const ch10 = 
     ::biosoup::NucleicAcid{"", seqs[0]->InflateData().substr(start_cutoff, section_length)};

@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <fstream>
 #include <iostream>
+#include <mutex>
 #include <ostream>
 #include <string>
 
@@ -15,6 +16,7 @@
 #include <mdbg/opt.hpp>
 
 #include <thread_pool_include.hpp>
+#include <tbb/concurrent_unordered_map.h>
 
 int main(int argc, char** argv) {
   auto const opts = ::mdbg::command_line_options::parse(argc, argv); 
@@ -24,7 +26,7 @@ int main(int argc, char** argv) {
     ::std::fprintf(stderr, "### DRY RUN ###\n");
   }
 
-  auto const seqs = ::mdbg::load_sequences(opts.input);
+  auto seqs = ::mdbg::load_sequences(opts.input);
 
   ::std::printf(
     "loaded %lu sequences in %ld ms\n", seqs.size(), timer.reset_ms());
@@ -48,15 +50,20 @@ int main(int argc, char** argv) {
 
   pool.wait_for_tasks();
 
-  ::std::size_t sum = 0;
-  ::std::vector<::std::size_t> stats(seqs.size());
+  if (!opts.sequences || opts.dry_run) {
+    decltype(seqs){}.swap(seqs);
+    ::std::printf("cleared sequences, new capacity: %lu\n", seqs.capacity());
+  }
 
-  for (::std::size_t i = 0; i < seqs.size(); ++i) {
+  ::std::size_t sum = 0;
+  ::std::vector<::std::size_t> stats(detected.size());
+
+  for (::std::size_t i = 0; i < detected.size(); ++i) {
     stats[i] = detected[i].size();
     sum += detected[i].size();
   }
 
-  sum /= seqs.size();
+  sum /= detected.size();
   auto const time = timer.reset_ms();
   ::std::sort(stats.begin(), stats.end());
 
@@ -77,7 +84,8 @@ int main(int argc, char** argv) {
 
   timer.reset_ms();
 
-  auto graph = ::mdbg::construct(detected, opts.k);
+  auto const& graph =
+    ::mdbg::construct(detected.begin(), detected.end(), opts.k);
 
   ::std::printf(
     "assembled de Bruijn graph (k = %lu) with %lu nodes in %ld ms\n",
@@ -90,6 +98,8 @@ int main(int argc, char** argv) {
       ::mdbg::terminate("unable to open/create given output file ", opts.output);
     }
 
+    // TODO: problematic usage of sequences
+    //       separate tool for loading sequences and graph and outputting gfa?
     ::mdbg::write_gfa(out, graph, seqs, opts);
 
     ::std::printf(

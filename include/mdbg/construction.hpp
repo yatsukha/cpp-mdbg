@@ -85,9 +85,15 @@ namespace mdbg {
     >;
 
   de_bruijn_graph_t construct(
-    ::std::vector<read_minimizers_t> const& minimizers,
+    ::std::vector<read_minimizers_t>::const_iterator begin,
+    ::std::vector<read_minimizers_t>::const_iterator end,
     ::std::size_t const k
-  ) noexcept; 
+  ) noexcept;
+
+  void merge_graphs(
+    ::std::vector<de_bruijn_graph_t>::iterator begin,
+    ::std::vector<de_bruijn_graph_t>::iterator end
+  ) noexcept;
 
   void write_gfa(
     ::std::ostream& out,
