@@ -27,8 +27,8 @@ template<typename... Args>
 int main(int argc, char** argv) {
   using namespace ::std::string_literals;
 
-  if (argc != 3) {
-    terminate("Required arguments: <input> <simulated reads output>");
+  if (argc != 4) {
+    terminate("Required arguments: <input> <simulated reads output> <reference output>");
   }
 
   if (!::std::filesystem::exists(argv[1])) {
@@ -53,6 +53,11 @@ int main(int argc, char** argv) {
     ::biosoup::NucleicAcid{"", seqs[0]->InflateData().substr(start_cutoff, section_length)};
 
   ::std::cout << "size of ch10: " << ch10.inflated_len << "\n";
+  ::std::cout << "dumping reference" << "\n";
+
+  ::std::ofstream{argv[3]} 
+    << ">ch10 start" << start_cutoff << " len " << section_length << "\n" 
+    << ch10.InflateData();
 
   // simulate reads similar to PacBio HiFi
   auto const reads = ::mdbg::sim::simulate(
