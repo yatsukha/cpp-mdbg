@@ -13,6 +13,7 @@ namespace mdbg {
 
     bool dry_run;
     bool sequences;
+    bool check_collisions;
 
     ::std::string input;
     ::std::string output;

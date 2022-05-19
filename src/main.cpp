@@ -84,7 +84,7 @@ int main(int argc, char** argv) {
   timer.reset_ms();
 
   auto const& graph =
-    ::mdbg::construct(detected.begin(), detected.end(), opts.k);
+    ::mdbg::construct(detected.begin(), detected.end(), opts);
 
   ::std::printf(
     "assembled de Bruijn graph (k = %lu) with %lu nodes in %ld ms\n",

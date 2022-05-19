@@ -2,6 +2,7 @@
 #include <mdbg/construction.hpp>
 #include <mdbg/util.hpp>
 
+#include <iostream>
 #include <cassert>
 #include <cstdint>
 #include <functional>
@@ -116,29 +117,30 @@ namespace mdbg {
   de_bruijn_graph_t construct(
     ::std::vector<read_minimizers_t>::const_iterator begin,
     ::std::vector<read_minimizers_t>::const_iterator end,
-    ::std::size_t const k
+    command_line_options const& opts
   ) noexcept {
-    auto const overlap_length = k - 1;
-    if (k < 2) {
+    auto const overlap_length = opts.k - 1;
+    if (opts.k < 2) {
       ::mdbg::terminate("k should be at least 2");
     }
 
     de_bruijn_graph_t graph;
+    ::tsl::robin_map<detail::compact_minimizer, char, detail::compact_minimizer_hash, detail::compact_minimizer_eq> collisions;
 
     while (begin != end) {
       auto const& read_minimizers = *(begin++);
-      if (read_minimizers.size() < k) {
+      if (read_minimizers.size() < opts.k) {
         continue;
       }
 
       detail::compact_minimizer current_window{
         read_minimizers.begin(),
         overlap_length,
-        0
+        {}
       };
 
       for (::std::size_t i = 0; i < overlap_length; ++i) {
-        current_window.cached_hash ^= read_minimizers[i].minimizer;
+        current_window.cached_hash.advance(read_minimizers[i].minimizer);
       }
 
       auto current_iter = graph.insert({current_window, {}}).first;
@@ -148,17 +150,30 @@ namespace mdbg {
            i < read_minimizers.size() - overlap_length + 1; ++i) {
 
         ++current_window.minimizer;
-        current_window.cached_hash 
-          ^= read_minimizers[i - 1].minimizer
-          ^  read_minimizers[i + overlap_length - 1].minimizer;
+        current_window.cached_hash.rotate(
+          read_minimizers[i + overlap_length - 1].minimizer,
+          read_minimizers[i - 1].minimizer,
+          overlap_length
+        ); 
 
         current_iter.value().out_edges.push_back(current_window);
 
-        current_iter = graph.insert({current_window, {}}).first;
-        current_iter.value().read_references.push_back(
+        auto const [next_iter, inserted] = graph.insert({current_window, {}});
+
+        (current_iter = next_iter).value().read_references.push_back(
           read_minimizers.begin() + 
             static_cast<detail::minimizer_iter_t::difference_type>(i));
+        
+        if (opts.check_collisions && !inserted) {
+          if (detail::collision(current_iter.key(), current_window)) {
+            collisions.insert({current_window, '\0'});
+          }
+        }
       }
+    }
+
+    if (opts.check_collisions) {
+      ::std::printf("de Bruijn node collisions: %lu\n", collisions.size());
     }
 
     return graph;

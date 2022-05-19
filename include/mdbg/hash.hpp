@@ -18,6 +18,29 @@ namespace mdbg {
       return out << h.lower << " " << h.upper;
     }
 
+    ::std::uint64_t collapse() const noexcept {
+      ::std::uint64_t const m = (0xc6a4a793ull << 32) + 0x5bd1e995;
+
+      ::std::uint64_t h = lower;
+      ::std::uint64_t k = upper;
+
+      int const r = 47;
+
+
+      k *= m;
+      k ^= k >> r;
+      k *= m;
+
+      h ^= k;
+      h *= m;
+
+      // Completely arbitrary number, to prevent 0's
+      // from hashing to 0.
+      h += 0xe6546b64;
+
+      return h;
+    }
+
     void advance(::std::uint64_t const in) noexcept {
       upper <<= 1;
       upper |= lower >> 63;

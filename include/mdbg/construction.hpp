@@ -2,6 +2,7 @@
 #include <mdbg/minimizers.hpp>
 #include <mdbg/io.hpp>
 #include <mdbg/opt.hpp>
+#include <mdbg/hash.hpp>
 
 #include <functional>
 #include <ostream>
@@ -10,18 +11,42 @@ namespace mdbg {
 
   namespace detail {
 
-  using minimizer_iter_t = read_minimizers_t::const_iterator;
-
+    using minimizer_iter_t = read_minimizers_t::const_iterator;
+    
     struct compact_minimizer {
       minimizer_iter_t minimizer;
       ::std::size_t length;
-      ::std::size_t cached_hash;
+      // TODO: identify with reverse by having two hashes
+      //       a regular and reverse one
+      //       two k-min-mers are equal if either of the hashes match with other
+      ::mdbg::hash128 cached_hash;
     };
+
+    inline bool collision(
+        compact_minimizer const& l, compact_minimizer const& r
+    ) noexcept {
+      if (!(l.cached_hash == r.cached_hash)) {
+        return false;
+      }
+
+      auto const K = l.length;
+
+      auto l_iter = l.minimizer;
+      auto r_iter = r.minimizer;
+      
+      for (::std::size_t i = 0; i < K; ++i) {
+        if ((l_iter++)->minimizer != (r_iter++)->minimizer) {
+          return true;
+        }
+      }
+
+      return false;
+    }
 
     struct compact_minimizer_hash {
       using value_type = compact_minimizer;
       ::std::size_t operator()(value_type const& m) const noexcept {
-        return m.cached_hash;
+        return m.cached_hash.collapse();
       }
     };
 
@@ -31,35 +56,7 @@ namespace mdbg {
         value_type const& l,
         value_type const& r
       ) const noexcept {
-        // TODO: prime for 128 or 256 simd
-        //       but might slowdown rest of the program depending on the cpu arch
-
-        auto const K = l.length;
-
-        if (l.cached_hash != r.cached_hash) {
-          return false;
-        }
-
-        auto l_iter = l.minimizer;
-        auto r_iter = r.minimizer;
-        
-        // TODO: test this
-        for (::std::size_t i = 0; i < K; ++i) {
-          if ((l_iter++)->minimizer != (r_iter++)->minimizer) {
-            l_iter = l.minimizer;
-            r_iter = r.minimizer + static_cast<long>(K) - 1;
-
-            for (::std::size_t j = 0; j < K; ++j) {
-              if ((l_iter++)->minimizer != (r_iter--)->minimizer) {
-                return false;
-              }
-            }
-            
-            break;
-          }
-        }
-
-        return true;
+        return l.cached_hash == r.cached_hash;
       }
     };
 
@@ -76,6 +73,7 @@ namespace mdbg {
 
   }
 
+  // TODO: maybe use a dedicated class?
   using de_bruijn_graph_t = 
     ::tsl::robin_map<
       detail::compact_minimizer, 
@@ -87,7 +85,7 @@ namespace mdbg {
   de_bruijn_graph_t construct(
     ::std::vector<read_minimizers_t>::const_iterator begin,
     ::std::vector<read_minimizers_t>::const_iterator end,
-    ::std::size_t const k
+    command_line_options const& opts
   ) noexcept;
 
   void merge_graphs(

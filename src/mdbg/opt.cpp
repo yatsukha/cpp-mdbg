@@ -25,6 +25,11 @@ namespace mdbg {
         ::cxxopts::value<bool>()
           ->default_value("0")
           ->implicit_value("1"))
+      ("c,check-collisions",
+        "Check for node collisions when building the de Bruijn graph.",
+        ::cxxopts::value<bool>()
+          ->default_value("0")
+          ->implicit_value("1"))
       ("i,input", "Input reads.", ::cxxopts::value<::std::string>())
       ("o,output", "Output for the graph formatted as GFA.",
         ::cxxopts::value<::std::string>());
@@ -47,6 +52,7 @@ namespace mdbg {
 
       rv.dry_run = r["dry-run"].as<decltype(rv.dry_run)>();
       rv.sequences = r["sequences"].as<decltype(rv.sequences)>();
+      rv.check_collisions = r["check-collisions"].as<decltype(rv.check_collisions)>();
 
       rv.input  = r["i"].as<decltype(rv.input)>();
       rv.output = r["o"].as<decltype(rv.output)>();
