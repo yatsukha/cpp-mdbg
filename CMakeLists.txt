@@ -52,7 +52,8 @@ target_include_directories(resolve PRIVATE
 ## tests
 
 add_executable(test
-  test/nucleic_acid_iter.cpp)
+  test/nucleic_acid_iter.cpp
+  test/custom_hash.cpp)
 
 find_package(Catch2 2 REQUIRED)
 
