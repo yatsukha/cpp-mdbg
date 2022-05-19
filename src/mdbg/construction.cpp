@@ -65,7 +65,7 @@ namespace mdbg {
 
         out << "L\t" << get_index(key) 
             << "\t+\t" << get_index(out_key) << "\t+\t"
-            << ::std::max(prefix_len, suffix_len) << "M" // TODO: min/max?
+            << ::std::min(prefix_len, suffix_len) << "M"
             << "\n";
       }
     }
