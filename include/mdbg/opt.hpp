@@ -7,6 +7,7 @@
 namespace mdbg {
 
   struct command_line_options {
+    ::std::size_t threads;
     ::std::size_t k;
     ::std::size_t l;
     double d;

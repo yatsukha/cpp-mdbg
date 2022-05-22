@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
     opts.l, opts.d, timer.reset_ms());
   
   ::std::vector<::std::vector<::mdbg::detected_minimizer>> detected(seqs.size());
-  ::thread_pool pool{};
+  ::thread_pool pool{opts.threads};
 
   for (::std::size_t i = 0; i < detected.size(); ++i) {
     pool.submit([&seqs, &detected, &minimizers, i]{

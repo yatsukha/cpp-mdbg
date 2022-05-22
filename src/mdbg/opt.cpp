@@ -10,6 +10,10 @@ namespace mdbg {
   command_line_options command_line_options::parse(int argc, char** argv) noexcept {
     ::cxxopts::Options options("mdbg", "C++ minimizer de Bruijn assembler.");
     options.add_options()
+      ("t,threads", 
+        "Maximum number of concurrent threads. "
+        "NOTE: Default of 0 means max concurrency.",
+        ::cxxopts::value<::std::size_t>()->default_value("0"))
       ("k,kmers", "Length of window of minimizers to use for the de Bruijn graph.",
         ::cxxopts::value<::std::size_t>()->default_value("5"))
       ("l,letters", "Length of the minimizers.",
@@ -26,7 +30,8 @@ namespace mdbg {
           ->default_value("0")
           ->implicit_value("1"))
       ("c,check-collisions",
-        "Check for node collisions when building the de Bruijn graph.",
+       "Check for node collisions when building the de Bruijn graph. "
+       "WARNING: VERY SLOW.",
         ::cxxopts::value<bool>()
           ->default_value("0")
           ->implicit_value("1"))
@@ -46,6 +51,7 @@ namespace mdbg {
     try {
       auto r = options.parse(argc, argv);
 
+      rv.threads = r["threads"].as<decltype(rv.threads)>();
       rv.k = r["k"].as<decltype(rv.k)>();
       rv.l = r["l"].as<decltype(rv.l)>();
       rv.d = r["d"].as<decltype(rv.d)>();
