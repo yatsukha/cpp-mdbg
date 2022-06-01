@@ -9,7 +9,7 @@ prefix="${prefix%.*}"
 ../tools/gfatools/gfatools asm $1 -u > "${prefix}_simplified.gfa"
 ../tools/gfatools/gfatools gfa2fa "${prefix}_simplified.gfa" > "${prefix}.fa"
 
-../tools/mummer-4.0.0rc1/nucmer -p ${prefix} $2 "${prefix}_simplified.fa"
+../tools/mummer-4.0.0rc1/nucmer -p ${prefix} $2 "${prefix}.fa"
 ../tools/mummer-4.0.0rc1/show-coords -c "${prefix}.delta" > "${prefix}.coords"
 
 ../tools/dotPlotly/mummerCoordsDotPlotly.R -i "${prefix}.coords" -o "${prefix}_dot_plot" -q 100

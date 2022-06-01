@@ -8,7 +8,10 @@
 namespace mdbg {
 
   command_line_options command_line_options::parse(int argc, char** argv) noexcept {
-    ::cxxopts::Options options("mdbg", "C++ minimizer de Bruijn assembler.");
+    ::cxxopts::Options options(
+        "mdbg", 
+        "C++ minimizer based de Bruijn assembler.");
+
     options.add_options()
       ("t,threads", 
         "Maximum number of concurrent threads. "
@@ -20,12 +23,23 @@ namespace mdbg {
         ::cxxopts::value<::std::size_t>()->default_value("7"))
       ("d,density", "Density of the universe minimizers.",
         ::cxxopts::value<double>()->default_value("0.008"))
+      ("a,analysis",
+        "Exit after outputting minimizer statistics for given reads.",
+        ::cxxopts::value<bool>()
+          ->default_value("0")
+          ->implicit_value("1"))
       ("dry-run", "Dry run, do not write to output.",
         ::cxxopts::value<bool>()
           ->default_value("0")
           ->implicit_value("1"))
       ("s,sequences", 
         "Output sequences contained within minimizers in output GFA.",
+        ::cxxopts::value<bool>()
+          ->default_value("0")
+          ->implicit_value("1"))
+      ("u,unitigs",
+       "Simplify straight portions of the graph into unitigs. "
+       "Incurs additional running time.",
         ::cxxopts::value<bool>()
           ->default_value("0")
           ->implicit_value("1"))
@@ -56,7 +70,9 @@ namespace mdbg {
       rv.l = r["l"].as<decltype(rv.l)>();
       rv.d = r["d"].as<decltype(rv.d)>();
 
+      rv.analysis = r["analysis"].as<decltype(rv.analysis)>();
       rv.dry_run = r["dry-run"].as<decltype(rv.dry_run)>();
+      rv.unitigs = r["unitigs"].as<decltype(rv.unitigs)>();
       rv.sequences = r["sequences"].as<decltype(rv.sequences)>();
       rv.check_collisions = r["check-collisions"].as<decltype(rv.check_collisions)>();
 
@@ -75,7 +91,7 @@ namespace mdbg {
     out << "command_line_options(k=" << opts.k
         << ", l=" << opts.l
         << ", d=" << opts.d
-        << ", dry_run=" << opts.dry_run
+        << ", unitigs=" << opts.unitigs
         << ", sequences=" << opts.sequences
         << ", input=" << ::std::filesystem::absolute(opts.input)
         << ", output=" << ::std::filesystem::absolute(opts.output)

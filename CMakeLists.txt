@@ -15,7 +15,8 @@ add_executable(mdbg
   src/mdbg/minimizers.cpp
   src/mdbg/construction.cpp
   src/mdbg/opt.cpp
-  src/mdbg/io.cpp)
+  src/mdbg/io.cpp
+  src/mdbg/simplification.cpp)
 
 add_executable(resolve
   src/resolve/main.cpp)

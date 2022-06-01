@@ -12,7 +12,9 @@ namespace mdbg {
     ::std::size_t l;
     double d;
 
+    bool analysis;
     bool dry_run;
+    bool unitigs;
     bool sequences;
     bool check_collisions;
 

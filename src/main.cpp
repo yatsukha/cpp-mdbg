@@ -1,8 +1,10 @@
+#include "mdbg/simplification.hpp"
 #include <algorithm>
 #include <atomic>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <mutex>
@@ -22,7 +24,11 @@ int main(int argc, char** argv) {
   auto timer = ::mdbg::timer{};
 
   if (opts.dry_run) {
-    ::std::fprintf(stderr, "### DRY RUN ###\n");
+    ::std::fprintf(stderr, "### DRY RUN  ###\n");
+  }
+
+  if (opts.analysis) {
+    ::std::fprintf(stderr, "### ANALYSIS ###\n");
   }
 
   auto seqs = ::mdbg::load_sequences(opts.input);
@@ -80,6 +86,10 @@ int main(int argc, char** argv) {
       static_cast<::std::size_t>(
         static_cast<double>(stats.size()) * (1.0 - 0.999))],
     stats.front());
+  
+  if (opts.analysis) {
+    ::std::exit(EXIT_SUCCESS);
+  }
 
   timer.reset_ms();
 
@@ -90,6 +100,15 @@ int main(int argc, char** argv) {
     "assembled de Bruijn graph (k = %lu) with %lu nodes in %ld ms\n",
     opts.k, graph.size(), timer.reset_ms());
 
+  ::mdbg::simplified_graph_t simplified;
+
+  if (opts.unitigs) {
+    simplified = ::mdbg::simplify(graph);
+    ::std::printf(
+      "simplified to %lu nodes in %ld ms\n",
+      simplified.size(), timer.reset_ms());
+  }
+
   if (!opts.dry_run) {
     ::std::ofstream out{opts.output};
     ::std::printf("writing...\r"); ::std::fflush(stdout);
@@ -97,9 +116,11 @@ int main(int argc, char** argv) {
       ::mdbg::terminate("unable to open/create given output file ", opts.output);
     }
 
-    // TODO: problematic usage of sequences
-    //       separate tool for loading sequences and graph and outputting gfa?
-    ::mdbg::write_gfa(out, graph, seqs, opts);
+    if (opts.unitigs) {
+      ::mdbg::write_gfa(out, simplified, seqs, opts);
+    } else {
+      ::mdbg::write_gfa(out, graph, seqs, opts);
+    }
 
     ::std::printf(
       "wrote de Bruijn graph to '%s' in %ld ms\n", 

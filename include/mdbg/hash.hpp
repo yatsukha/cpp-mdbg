@@ -14,6 +14,10 @@ namespace mdbg {
       return l.lower == r.lower && l.upper == r.upper;
     }
 
+    friend bool operator!=(hash128 const& l, hash128 const& r) noexcept {
+      return (l.lower != r.lower) + (l.upper != r.upper);
+    }
+
     friend ::std::ostream& operator<<(::std::ostream& out, hash128 const& h) noexcept {
       return out << h.lower << " " << h.upper;
     }

@@ -9,14 +9,28 @@
 
 namespace mdbg {
 
-  ::std::size_t calculate_length(
-    decltype(detail::compact_minimizer::minimizer) begin,
-    ::std::size_t const length,
-    ::std::size_t const l
-  ) noexcept {
-      // inclusive
-      auto const end = begin + static_cast<::std::int64_t>(length - 1);
-      return end->offset - begin->offset + l;
+  namespace detail {
+
+    inline bool collision(
+      compact_minimizer const& l, compact_minimizer const& r,
+      ::std::size_t const length
+    ) noexcept {
+      if (!(l.cached_hash == r.cached_hash)) {
+        return false;
+      }
+
+      auto l_iter = l.minimizer;
+      auto r_iter = r.minimizer;
+      
+      for (::std::size_t i = 0; i < length; ++i) {
+        if ((l_iter++)->minimizer != (r_iter++)->minimizer) {
+          return true;
+        }
+      }
+
+      return false;
+    }
+
   }
 
   void write_gfa(
@@ -27,12 +41,8 @@ namespace mdbg {
   ) noexcept {
     out << "H\tVN:Z:1.0" << "\n";
 
-    ::tsl::robin_map<
-      detail::compact_minimizer, 
-      ::std::size_t,
-      detail::compact_minimizer_hash,
-      detail::compact_minimizer_eq
-    > indexes;
+    minimizer_map_t<::std::size_t> indexes;
+    auto const length = opts.k - 1;
 
     auto get_index = [&indexes, index = 0](auto&& key) mutable -> ::std::size_t {
       auto const [iter, is_inserted] = indexes.try_emplace(key, index);
@@ -42,7 +52,7 @@ namespace mdbg {
 
     for (auto const& [key, unused] : graph) {
       auto const begin = key.minimizer;
-      auto const len   = calculate_length(key.minimizer, key.length, opts.l);
+      auto const len   = calculate_length(key.minimizer, length, opts.l);
       
       out << "S\t" << get_index(key) << "\t";
       if (opts.sequences) {
@@ -58,11 +68,11 @@ namespace mdbg {
 
     for (auto const& [key, value] : graph) {
       auto const prefix_len = 
-        calculate_length(key.minimizer + 1, key.length - 1, opts.l);
+        calculate_length(key.minimizer + 1, length - 1, opts.l);
 
       for (auto const& out_key : value.out_edges) {
         auto const suffix_len =
-          calculate_length(out_key.minimizer, out_key.length - 1, opts.l);
+          calculate_length(out_key.minimizer, length - 1, opts.l);
 
         out << "L\t" << get_index(key) 
             << "\t+\t" << get_index(out_key) << "\t+\t"
@@ -135,7 +145,6 @@ namespace mdbg {
 
       detail::compact_minimizer current_window{
         read_minimizers.begin(),
-        overlap_length,
         {}
       };
 
@@ -154,18 +163,34 @@ namespace mdbg {
           read_minimizers[i + overlap_length - 1].minimizer,
           read_minimizers[i - 1].minimizer,
           overlap_length
-        ); 
+        );
 
-        current_iter.value().out_edges.push_back(current_window);
+        auto prefix_minimizer = current_iter.key();
+        auto& prefix_node = current_iter.value();
+
+        // TODO: consider using just a single read
+        prefix_node.out_edges.push_back(current_window);
+        prefix_node.fan_out = prefix_node.fan_out ||
+          prefix_node.out_edges.front().cached_hash
+            != prefix_node.out_edges.back().cached_hash;
 
         auto const [next_iter, inserted] = graph.insert({current_window, {}});
 
         (current_iter = next_iter).value().read_references.push_back(
           read_minimizers.begin() + 
             static_cast<detail::minimizer_iter_t::difference_type>(i));
+
+        auto& suffix_node = current_iter.value();
+        if (!suffix_node.fan_in && suffix_node.last_in.has_value() 
+              && suffix_node.last_in.value().cached_hash 
+                  != prefix_minimizer.cached_hash) {
+          suffix_node.fan_in = true;
+        }
+
+        suffix_node.last_in = prefix_minimizer;
         
         if (opts.check_collisions && !inserted) {
-          if (detail::collision(current_iter.key(), current_window)) {
+          if (detail::collision(current_iter.key(), current_window, overlap_length)) {
             collisions.insert({current_window, '\0'});
           }
         }
