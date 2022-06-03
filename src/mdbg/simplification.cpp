@@ -106,7 +106,7 @@ namespace mdbg {
       }
 
       out << "\t"
-          << "LN:i" << total_len
+          << "LN:i:" << total_len
           << "\n";
     }
 

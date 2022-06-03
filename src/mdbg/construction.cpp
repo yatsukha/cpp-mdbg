@@ -62,7 +62,7 @@ namespace mdbg {
       }
 
       out << "\t"
-          << "LN:i" << len
+          << "LN:i:" << len
           << "\n";
     }
 
