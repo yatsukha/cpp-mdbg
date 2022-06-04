@@ -55,10 +55,13 @@ namespace mdbg {
       auto const len   = calculate_length(key.minimizer, length, opts.l);
       
       out << "S\t" << get_index(key) << "\t";
+
       if (opts.sequences) {
         auto const& read = *reads[begin->read];
         out.write(read.data() + begin->offset,
           static_cast<::std::streamsize>(len));
+      } else {
+        out << "*";
       }
 
       out << "\t"

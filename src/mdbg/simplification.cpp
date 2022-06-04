@@ -105,6 +105,10 @@ namespace mdbg {
         }
       }
 
+      if (!opts.sequences) {
+        out << "*";
+      }
+
       out << "\t"
           << "LN:i:" << total_len
           << "\n";
