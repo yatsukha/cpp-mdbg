@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <mutex>
 #include <ostream>
 #include <string>
@@ -16,11 +17,110 @@
 #include <mdbg/minimizers.hpp>
 #include <mdbg/io.hpp>
 #include <mdbg/opt.hpp>
+#include <mdbg/trio_binning.hpp>
 
 #include <thread_pool_include.hpp>
 
+void construct_from(
+  ::mdbg::sequences_t const& seqs,
+  ::mdbg::minimizers const& minimizers,
+  ::thread_pool& pool,
+  ::mdbg::command_line_options const& opts,
+  char const* print_prefix = ""
+) noexcept {
+  auto timer = ::mdbg::timer{};
+
+  ::std::vector<::std::vector<::mdbg::detected_minimizer>> detected(seqs.size());
+  ::std::vector<::std::future<bool>> detected_futures;
+
+  for (::std::size_t i = 0; i < detected.size(); ++i) {
+    detected_futures.emplace_back(
+      pool.submit([&seqs, &detected, &minimizers, i]{
+        detected[i] = ::mdbg::detect_minimizers(*seqs[i], i, minimizers);
+      })
+    );
+  }
+
+  // pool.wait_for_tasks();
+
+  ::std::size_t sum = 0;
+  ::std::vector<::std::size_t> stats(detected.size());
+
+  for (::std::size_t i = 0; i < detected.size(); ++i) {
+    detected_futures[i].get();
+    stats[i] = detected[i].size();
+    sum += detected[i].size();
+  }
+
+  sum /= detected.size();
+  auto const time = timer.reset_ms();
+  ::std::sort(stats.begin(), stats.end());
+
+  ::std::printf(
+    "%sdetected minimizers in %ld ms\n"
+    "%sminimizers per read:\n"
+    "  average:           %lu\n"
+    "  median:            %lu\n"
+    "  99.9th percentile: %lu\n"
+    "  min:               %lu\n",
+    print_prefix, time,
+    print_prefix,
+    sum,
+    stats[stats.size() / 2],
+    stats[
+      static_cast<::std::size_t>(
+        static_cast<double>(stats.size()) * (1.0 - 0.999))],
+    stats.front());
+  ::std::fflush(stdout);
+  
+  if (opts.analysis) {
+    return;
+  }
+
+  timer.reset_ms();
+
+  auto const& graph =
+    ::mdbg::construct(detected.begin(), detected.end(), opts);
+
+  ::std::printf(
+    "%sassembled de Bruijn graph (k = %lu) with %lu nodes in %ld ms\n",
+    print_prefix, opts.k, graph.size(), timer.reset_ms());
+  ::std::fflush(stdout);
+
+  ::mdbg::simplified_graph_t simplified;
+
+  if (opts.unitigs) {
+    simplified = ::mdbg::simplify(graph);
+    ::std::printf(
+      "%ssimplified to %lu nodes in %ld ms\n",
+      print_prefix, simplified.size(), timer.reset_ms());
+    ::std::fflush(stdout);
+  }
+
+  if (!opts.dry_run) {
+    ::std::ofstream out{opts.output_prefix};
+    if (!out.is_open()) {
+      ::mdbg::terminate("unable to open/create given output file ", opts.output_prefix);
+    }
+
+    if (opts.unitigs) {
+      ::mdbg::write_gfa(out, simplified, seqs, opts);
+    } else {
+      ::mdbg::write_gfa(out, graph, seqs, opts);
+    }
+
+    ::std::printf(
+      "%swrote de Bruijn graph to '%s' in %ld ms\n",
+      print_prefix,
+      opts.output_prefix.c_str(),
+      timer.reset_ms());
+    ::std::fflush(stdout);
+  }
+}
+
+
 int main(int argc, char** argv) {
-  auto const opts = ::mdbg::command_line_options::parse(argc, argv); 
+  auto opts = ::mdbg::command_line_options::parse(argc, argv); 
   auto timer = ::mdbg::timer{};
 
   if (opts.dry_run) {
@@ -43,88 +143,54 @@ int main(int argc, char** argv) {
     minimizers.from_hash.size(), 
     static_cast<::std::size_t>(::std::pow(4, opts.l)),
     opts.l, opts.d, timer.reset_ms());
-  
-  ::std::vector<::std::vector<::mdbg::detected_minimizer>> detected(seqs.size());
+
+
   ::thread_pool pool{opts.threads};
 
-  for (::std::size_t i = 0; i < detected.size(); ++i) {
-    pool.submit([&seqs, &detected, &minimizers, i]{
-      detected[i] = ::mdbg::detect_minimizers(*seqs[i], i, minimizers);
-    });
-  }
-
-  pool.wait_for_tasks();
-
-  if (!opts.sequences || opts.dry_run) {
-    decltype(seqs){}.swap(seqs);
-    ::std::printf("cleared sequences, new capacity: %lu\n", seqs.capacity());
-  }
-
-  ::std::size_t sum = 0;
-  ::std::vector<::std::size_t> stats(detected.size());
-
-  for (::std::size_t i = 0; i < detected.size(); ++i) {
-    stats[i] = detected[i].size();
-    sum += detected[i].size();
-  }
-
-  sum /= detected.size();
-  auto const time = timer.reset_ms();
-  ::std::sort(stats.begin(), stats.end());
-
-  ::std::printf(
-    "detected minimizers in %ld ms\n"
-    "minimizers per read:\n"
-    "  average:           %lu\n"
-    "  median:            %lu\n"
-    "  99.9th percentile: %lu\n"
-    "  min:               %lu\n",
-    time,
-    sum,
-    stats[stats.size() / 2],
-    stats[
-      static_cast<::std::size_t>(
-        static_cast<double>(stats.size()) * (1.0 - 0.999))],
-    stats.front());
-  
-  if (opts.analysis) {
+  if (!opts.trio_binning) {
+    opts.output_prefix += ".gfa";
+    ::construct_from(seqs, minimizers, pool, opts);
     ::std::exit(EXIT_SUCCESS);
   }
 
-  timer.reset_ms();
+  ::std::vector<::mdbg::kmer_counts_t> counts(2);
 
-  auto const& graph =
-    ::mdbg::construct(detected.begin(), detected.end(), opts);
+  pool.submit([&counts, &opts]{
+    counts[0] = ::mdbg::count_kmers(
+      ::mdbg::load_sequences(opts.trio_binning->input_0),
+      opts);
+  });
+
+  pool.submit([&counts, &opts]{
+    counts[1] = ::mdbg::count_kmers(
+      ::mdbg::load_sequences(opts.trio_binning->input_1),
+      opts);
+  });
+
+  pool.wait_for_tasks();
 
   ::std::printf(
-    "assembled de Bruijn graph (k = %lu) with %lu nodes in %ld ms\n",
-    opts.k, graph.size(), timer.reset_ms());
+    "loaded and counted kmers of haplotypes in %ld ms\n", timer.reset_ms());
 
-  ::mdbg::simplified_graph_t simplified;
+  auto const& filtered = ::mdbg::filter_reads(seqs, counts, opts);
 
-  if (opts.unitigs) {
-    simplified = ::mdbg::simplify(graph);
-    ::std::printf(
-      "simplified to %lu nodes in %ld ms\n",
-      simplified.size(), timer.reset_ms());
-  }
+  ::std::printf(
+    "binned reads (0 - %lu, 1 - %lu) in %ld ms\n", 
+    filtered.first.size(), filtered.second.size(), timer.reset_ms());
 
-  if (!opts.dry_run) {
-    ::std::ofstream out{opts.output};
-    ::std::printf("writing...\r"); ::std::fflush(stdout);
-    if (!out.is_open()) {
-      ::mdbg::terminate("unable to open/create given output file ", opts.output);
-    }
+  auto opts_0 = opts;
+  opts_0.output_prefix += ".0.gfa";
 
-    if (opts.unitigs) {
-      ::mdbg::write_gfa(out, simplified, seqs, opts);
-    } else {
-      ::mdbg::write_gfa(out, graph, seqs, opts);
-    }
+  pool.submit([&filtered, &minimizers, &pool, &opts_0]{
+    ::construct_from(filtered.first, minimizers, pool, opts_0, "[haplotype 0] ");
+  });
 
-    ::std::printf(
-      "wrote de Bruijn graph to '%s' in %ld ms\n", 
-      opts.output.c_str(),
-      timer.reset_ms());
-  }
+  auto opts_1 = opts;
+  opts_1.output_prefix += ".1.gfa";
+
+  pool.submit([&filtered, &minimizers, &pool, &opts_1]{
+    ::construct_from(filtered.second, minimizers, pool, opts_1, "[haplotype 1] ");
+  });
+
+  pool.wait_for_tasks();
 }

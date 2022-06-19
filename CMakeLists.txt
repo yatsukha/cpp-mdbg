@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address,undefined")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -g")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -g -march=native")
 
 add_executable(sim src/sim/main.cpp)
 add_executable(mdbg 
@@ -16,10 +16,14 @@ add_executable(mdbg
   src/mdbg/construction.cpp
   src/mdbg/opt.cpp
   src/mdbg/io.cpp
-  src/mdbg/simplification.cpp)
+  src/mdbg/simplification.cpp
+  src/mdbg/trio_binning.cpp)
 
 add_executable(resolve
   src/resolve/main.cpp)
+
+add_executable(testing_ground
+  src/testing_ground.cpp)
 
 include(FetchContent)
 
@@ -49,6 +53,9 @@ target_include_directories(resolve PRIVATE
   "include"
   "vendor/cxxopts/include"
   "vendor/robin-map/include")
+
+target_include_directories(testing_ground PRIVATE
+  "include")
 
 ## tests
 

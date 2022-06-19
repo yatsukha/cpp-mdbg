@@ -39,7 +39,7 @@ namespace mdbg {
     ::std::vector<detail::compact_minimizer> to_process;
 
     for (auto const& [minimizer, node] : dbg) {
-      if (!node.last_in.has_value()) {
+      if (node.fan_in || !node.last_in.has_value()) {
         to_process.push_back(minimizer);
       }
     }
@@ -139,7 +139,7 @@ namespace mdbg {
         << "\n";
     
     if (!out) {
-      ::mdbg::terminate("unable to write graph to ", opts.output);
+      ::mdbg::terminate("unable to write graph to ", opts.output_prefix);
     }
   }
 

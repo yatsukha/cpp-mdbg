@@ -91,7 +91,7 @@ namespace mdbg {
         << "\n";
     
     if (!out) {
-      ::mdbg::terminate("unable to write graph to ", opts.output);
+      ::mdbg::terminate("unable to write graph to ", opts.output_prefix);
     }
   }
 

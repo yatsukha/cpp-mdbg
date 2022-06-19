@@ -64,17 +64,29 @@ namespace mdbg {
       extension.find(".fq") != ::std::string::npos;
   }
 
-  ::std::vector<::std::unique_ptr<::std::string>> 
+  sequences_t convert(
+    ::std::vector<::std::unique_ptr<::std::string>>&& seqs
+  ) noexcept {
+    sequences_t rv(seqs.size());
+
+    for (::std::size_t i = 0; i < rv.size(); ++i) {
+      rv[i] = sequences_t::value_type{seqs[i].release()};
+    }
+
+    return rv;
+  }
+
+  sequences_t
   load_sequences(::std::string const& input) noexcept {
     if (!::std::filesystem::exists(input)) {
       ::mdbg::terminate("Could not locate given file: ", input);
     }
 
     if (fastq(extension(input))) {
-      return ::fast::CreateFastqParser<::std::string>(input.c_str()).Parse();
+      return convert(::fast::CreateFastqParser<::std::string>(input.c_str()).Parse());
     }
 
-    return ::fast::CreateFastaParser<::std::string>(input.c_str()).Parse();
+    return convert(::fast::CreateFastaParser<::std::string>(input.c_str()).Parse());
   }
 
 }
