@@ -58,7 +58,6 @@ namespace mdbg {
       for (auto const& out_edge : chain.back().second.out_edges) {
         to_process.push_back(out_edge);
       }
-
     }
 
     return simplified;
