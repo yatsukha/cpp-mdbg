@@ -172,6 +172,12 @@ int main(int argc, char** argv) {
   ::std::printf(
     "loaded and counted kmers of haplotypes in %ld ms\n", timer.reset_ms());
 
+  ::mdbg::reduce_to_unique_kmers(counts[0], counts[1]);
+  
+  ::std::printf(
+    "reduced to unique kmers (%lu, %lu) in %ld ms\n",
+    counts[0].size(), counts[1].size(), timer.reset_ms());
+
   // TODO: speed this part up with threadpool
   auto const& filtered = ::mdbg::filter_reads(pool, seqs, counts, opts);
 
