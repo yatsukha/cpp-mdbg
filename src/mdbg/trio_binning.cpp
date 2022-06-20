@@ -111,8 +111,9 @@ namespace mdbg {
         first = false;
       }
 
-      if (min >= min_kmers 
-          && static_cast<float>(max) / static_cast<float>(min) >= min_ratio) {
+      if (max >= min_kmers 
+          && (min == 0
+              || static_cast<float>(max) / static_cast<float>(min) >= min_ratio)) {
         if (first) {
           rv.first.push_back(seq);
         } else {
