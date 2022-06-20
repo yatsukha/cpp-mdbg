@@ -3,6 +3,7 @@
 #include <biosoup_include.hpp>
 
 #include <cstdint>
+#include <mutex>
 
 namespace mdbg {
 
@@ -68,6 +69,7 @@ namespace mdbg {
   }
 
   ::std::pair<sequences_t, sequences_t> filter_reads(
+    ::thread_pool& pool,
     sequences_t const& seqs,
     ::std::vector<kmer_counts_t> const& counts,
     command_line_options const& opts
@@ -78,53 +80,69 @@ namespace mdbg {
     // TODO: code dup
     
     ::std::pair<sequences_t, sequences_t> rv;
+    ::std::pair<::std::mutex, ::std::mutex> filtered_guards{};
+
+    // TODO: first and second getting annoyting
+    auto const add_first = [&rv, &filtered_guards](auto&& seq) {
+      ::std::lock_guard<::std::mutex> guard(filtered_guards.first);
+      rv.first.push_back(seq);
+    };
+    auto const add_second = [&rv, &filtered_guards](auto&& seq) {
+      ::std::lock_guard<::std::mutex> guard(filtered_guards.second);
+      rv.second.push_back(seq);
+    };
+
     auto const k = opts.trio_binning->kmer_length;
     auto const mask = ~(static_cast<::std::uint64_t>(-1) << (2 * k));
 
     for (auto const& seq : seqs) {
-      ::std::uint64_t kmer = 0;
-      ::std::pair<::std::size_t, ::std::size_t> unique_counts = {0, 0};
+      pool.submit([&seq, add_first, add_second, k, mask, &counts]{
+        ::std::uint64_t kmer = 0;
+        ::std::pair<::std::size_t, ::std::size_t> unique_counts = {0, 0};
 
-      for (::std::size_t i = 0; i < k - 1; ++i) {
-        kmer = (kmer << 2) 
-                | ::biosoup::kNucleotideCoder[static_cast<::std::size_t>((*seq)[i])];
-      }
-
-      for (::std::size_t i = k - 1; i < seq->length(); ++i) {
-        kmer = (kmer << 2) 
-                | ::biosoup::kNucleotideCoder[static_cast<::std::size_t>((*seq)[i])];
-        kmer &= mask;
-
-        if (counts[0].count(kmer)) {
-          ++unique_counts.first;
-        } else if (counts[1].count(kmer)) {
-          ++unique_counts.second;
+        for (::std::size_t i = 0; i < k - 1; ++i) {
+          kmer = (kmer << 2) 
+                  | ::biosoup::kNucleotideCoder[static_cast<::std::size_t>((*seq)[i])];
         }
-      }
 
-      ::std::size_t max = unique_counts.first;
-      ::std::size_t min = unique_counts.second;
-      bool first = true;
+        for (::std::size_t i = k - 1; i < seq->length(); ++i) {
+          kmer = (kmer << 2) 
+                  | ::biosoup::kNucleotideCoder[static_cast<::std::size_t>((*seq)[i])];
+          kmer &= mask;
 
-      if (unique_counts.first < unique_counts.second) {
-        ::std::swap(min, max);
-        first = false;
-      }
+          if (counts[0].count(kmer)) {
+            ++unique_counts.first;
+          }
+          if (counts[1].count(kmer)) {
+            ++unique_counts.second;
+          }
+        }
 
-      if (max >= min_kmers 
-          && (min == 0
-              || static_cast<float>(max) / static_cast<float>(min) >= min_ratio)) {
-        if (first) {
-          rv.first.push_back(seq);
+        ::std::size_t max = unique_counts.first;
+        ::std::size_t min = unique_counts.second;
+        bool first = true;
+
+        if (unique_counts.first < unique_counts.second) {
+          ::std::swap(min, max);
+          first = false;
+        }
+
+        if (max >= min_kmers 
+            && (min == 0
+                || static_cast<float>(max) / static_cast<float>(min) >= min_ratio)) {
+          if (first) {
+            add_first(seq);
+          } else {
+            add_second(seq);
+          }
         } else {
-          rv.second.push_back(seq);
+          add_first(seq);
+          add_second(seq);
         }
-      } else {
-        rv.first.push_back(seq);
-        rv.second.push_back(seq);
-      }
+      });
     }
 
+    pool.wait_for_tasks();
     return rv;
   }
 

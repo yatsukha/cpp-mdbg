@@ -4,6 +4,7 @@
 #include <mdbg/opt.hpp>
 
 #include <tsl/robin_map.h>
+#include <thread_pool_include.hpp>
 
 #include <cstdint>
 
@@ -23,6 +24,7 @@ namespace mdbg {
 
   // TODO: better namespacing
   ::std::pair<sequences_t, sequences_t> filter_reads(
+    ::thread_pool& pool,
     sequences_t const& seqs,
     ::std::vector<kmer_counts_t> const& counts,
     command_line_options const& opts

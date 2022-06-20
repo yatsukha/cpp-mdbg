@@ -172,7 +172,8 @@ int main(int argc, char** argv) {
   ::std::printf(
     "loaded and counted kmers of haplotypes in %ld ms\n", timer.reset_ms());
 
-  auto const& filtered = ::mdbg::filter_reads(seqs, counts, opts);
+  // TODO: speed this part up with threadpool
+  auto const& filtered = ::mdbg::filter_reads(pool, seqs, counts, opts);
 
   ::std::printf(
     "binned reads (0 - %lu, 1 - %lu) in %ld ms\n", 
