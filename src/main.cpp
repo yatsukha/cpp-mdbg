@@ -23,7 +23,6 @@
 
 void construct_from(
   ::mdbg::sequences_t const& seqs,
-  ::mdbg::minimizers const& minimizers,
   ::thread_pool& pool,
   ::mdbg::command_line_options const& opts,
   char const* print_prefix = ""
@@ -35,8 +34,8 @@ void construct_from(
 
   for (::std::size_t i = 0; i < detected.size(); ++i) {
     detected_futures.emplace_back(
-      pool.submit([&seqs, &detected, &minimizers, i]{
-        detected[i] = ::mdbg::detect_minimizers(*seqs[i], i, minimizers);
+      pool.submit([&seqs, &detected, &opts, i]{
+        detected[i] = ::mdbg::detect_minimizers(*seqs[i], i, opts);
       })
     );
   }
@@ -136,20 +135,11 @@ int main(int argc, char** argv) {
   ::std::printf(
     "loaded %lu sequences in %ld ms\n", seqs.size(), timer.reset_ms());
 
-  auto const minimizers = ::mdbg::pick_minimizers(opts.l, opts.d);
-
-  ::std::printf(
-    "picked %lu (out of %lu) minimizers (l = %lu, d = %f) in %ld ms\n",
-    minimizers.from_hash.size(), 
-    static_cast<::std::size_t>(::std::pow(4, opts.l)),
-    opts.l, opts.d, timer.reset_ms());
-
-
   ::thread_pool pool{opts.threads};
 
   if (!opts.trio_binning) {
     opts.output_prefix += ".gfa";
-    ::construct_from(seqs, minimizers, pool, opts);
+    ::construct_from(seqs, pool, opts);
     ::std::exit(EXIT_SUCCESS);
   }
 
@@ -188,15 +178,15 @@ int main(int argc, char** argv) {
   auto opts_0 = opts;
   opts_0.output_prefix += ".0.gfa";
 
-  pool.submit([&filtered, &minimizers, &pool, &opts_0]{
-    ::construct_from(filtered.first, minimizers, pool, opts_0, "[haplotype 0] ");
+  pool.submit([&filtered, &pool, &opts_0]{
+    ::construct_from(filtered.first, pool, opts_0, "[haplotype 0] ");
   });
 
   auto opts_1 = opts;
   opts_1.output_prefix += ".1.gfa";
 
-  pool.submit([&filtered, &minimizers, &pool, &opts_1]{
-    ::construct_from(filtered.second, minimizers, pool, opts_1, "[haplotype 1] ");
+  pool.submit([&filtered, &pool, &opts_1]{
+    ::construct_from(filtered.second, pool, opts_1, "[haplotype 1] ");
   });
 
   pool.wait_for_tasks();
