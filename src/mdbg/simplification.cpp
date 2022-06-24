@@ -1,3 +1,4 @@
+#include <cstdio>
 #include <mdbg/simplification.hpp>
 #include <mdbg/construction.hpp>
 
@@ -73,7 +74,6 @@ namespace mdbg {
     out << "H\tVN:Z:1.0" << "\n";
 
     minimizer_map_t<::std::size_t> indexes;
-    auto const overlap_length = opts.k - 2;
 
     auto get_index = [&indexes, index = 0](auto&& key) mutable -> ::std::size_t {
       auto const [iter, is_inserted] = indexes.try_emplace(key, index);
@@ -85,15 +85,15 @@ namespace mdbg {
       out << "S\t" << get_index(starting_minimizer) << "\t";
       ::std::size_t total_len = 0;
 
-      for (::std::size_t i = 0; i < minimizer_node_pairs.size(); ++i) {
-        auto const& current_minimizer = minimizer_node_pairs[i].first;
+      for (auto const& [current_minimizer, node_data] : minimizer_node_pairs) {
 
         auto const begin = current_minimizer.minimizer;
         auto const len   = 
           calculate_length(
             current_minimizer.minimizer,
-            i == minimizer_node_pairs.size() - 1 ? overlap_length + 1 : 2, 
-            opts.l) - opts.l; // TODO: should this always be subtracted? even for last?
+            node_data.out_edges.empty() ? opts.k - 1 : 2,
+            opts.l
+          ) + (node_data.out_edges.empty() ? opts.l : 0);
 
         total_len += len;
         
@@ -116,17 +116,10 @@ namespace mdbg {
     for (auto const& [starting_minimizer, minimizer_node_pairs] : graph) {
       auto const& [prefix_minimizer, prefix_node] = minimizer_node_pairs.back();
 
-      auto const prefix_len = 
-        calculate_length(
-            prefix_minimizer.minimizer + 1, overlap_length, opts.l);
-
       for (auto const& out_key : prefix_node.out_edges) {
-        auto const suffix_len =
-          calculate_length(out_key.minimizer, overlap_length, opts.l);
-
         out << "L\t" << get_index(starting_minimizer) 
             << "\t+\t" << get_index(out_key) << "\t+\t"
-            << ::std::min(prefix_len, suffix_len) << "M"
+            << 0 << "M"
             << "\n";
       }
     }

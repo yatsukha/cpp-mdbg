@@ -39,6 +39,7 @@ namespace mdbg {
     sequences_t const& reads,
     command_line_options const& opts
   ) noexcept {
+    // TODO: outdated, used simplified write
     out << "H\tVN:Z:1.0" << "\n";
 
     minimizer_map_t<::std::size_t> indexes;

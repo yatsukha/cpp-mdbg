@@ -79,11 +79,13 @@ namespace mdbg {
   inline ::std::size_t calculate_length(
     decltype(detail::compact_minimizer::minimizer) begin,
     ::std::size_t const length,
-    ::std::size_t const l
+    ::std::size_t const
   ) noexcept {
-      // inclusive
+      // calculate the length in bases for
+      // 'length' minimizers, without including the last minimizer's
+      // own length l
       auto const end = begin + static_cast<::std::int64_t>(length) - 1;
-      return end->offset - begin->offset + l;
+      return end->offset - begin->offset;
   }
 
   void write_gfa(
