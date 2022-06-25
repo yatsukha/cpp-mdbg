@@ -116,11 +116,6 @@ namespace mdbg {
           data.out_edges.end(), 
           value.out_edges.begin(),
           value.out_edges.end());
-
-        data.read_references.insert(
-            data.read_references.end(),
-            value.read_references.begin(),
-            value.read_references.end());
       }
       
       // force free
@@ -157,7 +152,6 @@ namespace mdbg {
       }
 
       auto current_iter = graph.insert({current_window, {}}).first;
-      current_iter.value().read_references.push_back(read_minimizers.begin());
       
       for (::std::size_t i = 1; 
            i < read_minimizers.size() - overlap_length + 1; ++i) {
@@ -179,10 +173,6 @@ namespace mdbg {
             != prefix_node.out_edges.back().cached_hash;
 
         auto const [next_iter, inserted] = graph.insert({current_window, {}});
-
-        (current_iter = next_iter).value().read_references.push_back(
-          read_minimizers.begin() + 
-            static_cast<detail::minimizer_iter_t::difference_type>(i));
 
         auto& suffix_node = current_iter.value();
         if (!suffix_node.fan_in && suffix_node.last_in.has_value() 

@@ -44,8 +44,6 @@ namespace mdbg {
 
     struct dbg_node {
       ::std::vector<compact_minimizer> out_edges;
-      // metadata
-      ::std::vector<minimizer_iter_t> read_references;
 
       ::std::optional<compact_minimizer> last_in = ::std::nullopt;
       bool fan_in = false;
