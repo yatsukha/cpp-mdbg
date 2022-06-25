@@ -96,45 +96,18 @@ namespace mdbg {
     }
   }
 
-  void merge_graphs(
-    ::std::vector<de_bruijn_graph_t>::iterator begin,
-    ::std::vector<de_bruijn_graph_t>::iterator end
-  ) noexcept {
-    if (begin == end) {
-      return;
-    }
-
-    auto& merged = *begin;
-
-    while (++begin != end) {
-      auto& other = *begin;
-      
-      for (auto const& [key, value] : other) {
-        auto& data = merged[key];
-
-        data.out_edges.insert(
-          data.out_edges.end(), 
-          value.out_edges.begin(),
-          value.out_edges.end());
-      }
-      
-      // force free
-      de_bruijn_graph_t{}.swap(other);
-    }
-  }
-
   de_bruijn_graph_t construct(
     ::std::vector<read_minimizers_t>::const_iterator begin,
     ::std::vector<read_minimizers_t>::const_iterator end,
     command_line_options const& opts
   ) noexcept {
     auto const overlap_length = opts.k - 1;
-    if (opts.k < 2) {
-      ::mdbg::terminate("k should be at least 2");
+    if (opts.k < 3) {
+      ::mdbg::terminate("k should be at least 3");
     }
 
     de_bruijn_graph_t graph;
-    ::tsl::robin_map<detail::compact_minimizer, char, detail::compact_minimizer_hash, detail::compact_minimizer_eq> collisions;
+    minimizer_map_t<::std::size_t> collisions;
 
     while (begin != end) {
       auto const& read_minimizers = *(begin++);
@@ -167,12 +140,10 @@ namespace mdbg {
         auto& prefix_node = current_iter.value();
 
         // TODO: consider using just a single read
-        prefix_node.out_edges.push_back(current_window);
-        prefix_node.fan_out = prefix_node.fan_out ||
-          prefix_node.out_edges.front().cached_hash
-            != prefix_node.out_edges.back().cached_hash;
+        prefix_node.out_edges.insert(current_window);
 
         auto const [next_iter, inserted] = graph.insert({current_window, {}});
+        current_iter = next_iter;
 
         auto& suffix_node = current_iter.value();
         if (!suffix_node.fan_in && suffix_node.last_in.has_value() 
@@ -185,7 +156,7 @@ namespace mdbg {
         
         if (opts.check_collisions && !inserted) {
           if (detail::collision(current_iter.key(), current_window, overlap_length)) {
-            collisions.insert({current_window, '\0'});
+            ++collisions[current_window];
           }
         }
       }

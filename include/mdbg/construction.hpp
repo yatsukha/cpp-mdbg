@@ -6,6 +6,9 @@
 #include <mdbg/opt.hpp>
 #include <mdbg/hash.hpp>
 
+#include <tsl/robin_map.h>
+#include <tsl/robin_set.h>
+
 #include <functional>
 #include <optional>
 #include <ostream>
@@ -43,11 +46,14 @@ namespace mdbg {
     };
 
     struct dbg_node {
-      ::std::vector<compact_minimizer> out_edges;
+      ::tsl::robin_set<
+        detail::compact_minimizer,
+        detail::compact_minimizer_hash,
+        detail::compact_minimizer_eq
+      > out_edges;
 
       ::std::optional<compact_minimizer> last_in = ::std::nullopt;
       bool fan_in = false;
-      bool fan_out = false;
     };
 
   }
@@ -57,6 +63,13 @@ namespace mdbg {
     ::tsl::robin_map<
       detail::compact_minimizer,
       V,
+      detail::compact_minimizer_hash,
+      detail::compact_minimizer_eq
+    >;
+
+  using minimizer_set_t =
+    ::tsl::robin_set<
+      detail::compact_minimizer,
       detail::compact_minimizer_hash,
       detail::compact_minimizer_eq
     >;

@@ -15,12 +15,12 @@ namespace mdbg {
     // = = ===== = =
     // = /       \ =
     //   X       X
-    while (!current_node.second.fan_out) {
+    while (current_node.second.out_edges.size() < 2) {
       if (current_node.second.out_edges.empty()) {
         break;
       }
 
-      current_node = *dbg.find(current_node.second.out_edges.front());
+      current_node = *dbg.find(*current_node.second.out_edges.begin());
       
       if (current_node.second.fan_in) {
         break;
