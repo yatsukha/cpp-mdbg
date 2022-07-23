@@ -22,9 +22,6 @@ add_executable(mdbg
 add_executable(resolve
   src/resolve/main.cpp)
 
-add_executable(testing_ground
-  src/testing_ground.cpp)
-
 include(FetchContent)
 
 FetchContent_Declare(
@@ -55,9 +52,6 @@ target_include_directories(resolve PRIVATE
   "include"
   "vendor/cxxopts/include"
   "vendor/robin-map/include")
-
-target_include_directories(testing_ground PRIVATE
-  "include")
 
 ## tests
 
