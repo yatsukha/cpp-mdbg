@@ -8,6 +8,7 @@
 
 #include <tsl/robin_map.h>
 #include <tsl/robin_set.h>
+#include <tbb/concurrent_hash_map.h>
 
 #include <functional>
 #include <optional>
@@ -45,6 +46,16 @@ namespace mdbg {
       }
     };
 
+    struct compact_hash_eq {
+      using value_type = compact_minimizer;
+      static ::std::size_t hash(value_type const& m) noexcept {
+        return compact_minimizer_hash{}(m);
+      }
+      static bool equal(value_type const& l, value_type const& r) noexcept {
+        return compact_minimizer_eq{}(l, r);
+      }
+    };
+
     struct dbg_node {
       ::tsl::robin_set<
         detail::compact_minimizer,
@@ -74,17 +85,26 @@ namespace mdbg {
       detail::compact_minimizer_eq
     >;
 
-  using de_bruijn_graph_t = minimizer_map_t<detail::dbg_node>;
+  using concurrent_de_bruijn_graph_t = tbb::concurrent_hash_map<
+    detail::compact_minimizer,
+    detail::dbg_node,
+    detail::compact_hash_eq
+  >;
 
-  de_bruijn_graph_t construct(
-    ::std::vector<read_minimizers_t>::const_iterator begin,
-    ::std::vector<read_minimizers_t>::const_iterator end,
+  // using de_bruijn_graph_t = minimizer_map_t<detail::dbg_node>;
+  using de_bruijn_graph_t = concurrent_de_bruijn_graph_t;
+
+  void construct(
+    de_bruijn_graph_t& graph,
+    read_minimizers_t const& read_minimizers,
     command_line_options const& opts
   ) noexcept;
 
-  void merge_graphs(
-    ::std::vector<de_bruijn_graph_t>::iterator begin,
-    ::std::vector<de_bruijn_graph_t>::iterator end
+  void construct(
+    de_bruijn_graph_t& graph, 
+    ::std::vector<read_minimizers_t>::const_iterator begin,
+    ::std::vector<read_minimizers_t>::const_iterator end,
+    command_line_options const& opts
   ) noexcept;
 
   inline ::std::size_t calculate_length(

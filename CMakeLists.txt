@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address,undefined")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O3 -fsanitize=address,undefined")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -g -march=native")
 
 add_executable(sim src/sim/main.cpp)
@@ -35,9 +35,10 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(fast)
 
 find_package(Threads REQUIRED)
+find_package(TBB REQUIRED)
 
 target_link_libraries(sim PRIVATE fast biosoup::biosoup)
-target_link_libraries(mdbg PRIVATE fast biosoup::biosoup Threads::Threads)
+target_link_libraries(mdbg PRIVATE fast biosoup::biosoup Threads::Threads TBB::tbb)
 
 target_include_directories(sim PRIVATE "include" "vendor/biosoup/include")
 
@@ -47,7 +48,8 @@ target_include_directories(mdbg PRIVATE
   "vendor/biosoup/include" 
   "vendor/cxxopts/include"
   "vendor/robin-map/include"
-  "vendor/thread-pool")
+  "vendor/thread-pool"
+  ${TBB_INCLUDE_DIRS})
 
 target_include_directories(resolve PRIVATE
   "include"

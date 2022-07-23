@@ -96,77 +96,75 @@ namespace mdbg {
     }
   }
 
-  de_bruijn_graph_t construct(
+  void construct(
+    de_bruijn_graph_t& graph,
+    read_minimizers_t const& read_minimizers,
+    command_line_options const& opts
+  ) noexcept {
+    if (opts.k < 3) {
+      ::mdbg::terminate("k should be at least 3");
+    }
+    auto const overlap_length = opts.k - 1;
+
+    if (read_minimizers.size() < opts.k) {
+      return;
+    }
+
+    detail::compact_minimizer current_window{
+      read_minimizers.begin(),
+      {}
+    };
+
+    for (::std::size_t i = 0; i < overlap_length; ++i) {
+      current_window.cached_hash.advance(read_minimizers[i].minimizer);
+    }
+
+    de_bruijn_graph_t::accessor accessor;
+    graph.insert(accessor, {current_window, {}});
+    
+    for (::std::size_t i = 1; 
+         i < read_minimizers.size() - overlap_length + 1; ++i) {
+
+      ++current_window.minimizer;
+      current_window.cached_hash.rotate(
+        read_minimizers[i + overlap_length - 1].minimizer,
+        read_minimizers[i - 1].minimizer,
+        overlap_length
+      );
+
+      auto prefix_minimizer = accessor->first;
+      auto& prefix_node = accessor->second;
+
+      prefix_node.out_edges.insert(current_window);
+
+      auto const inserted = graph.insert(accessor, {current_window, {}});
+
+      auto& suffix_node = accessor->second;
+      if (!suffix_node.fan_in && suffix_node.last_in.has_value() 
+            && suffix_node.last_in.value().cached_hash 
+                != prefix_minimizer.cached_hash) {
+        suffix_node.fan_in = true;
+      }
+
+      suffix_node.last_in = prefix_minimizer;
+      
+      if (opts.check_collisions && !inserted) {
+        if (detail::collision(accessor->first, current_window, overlap_length)) {
+          //
+        }
+      }
+    }
+  }
+
+  void construct(
+    de_bruijn_graph_t& graph,
     ::std::vector<read_minimizers_t>::const_iterator begin,
     ::std::vector<read_minimizers_t>::const_iterator end,
     command_line_options const& opts
   ) noexcept {
-    auto const overlap_length = opts.k - 1;
-    if (opts.k < 3) {
-      ::mdbg::terminate("k should be at least 3");
-    }
-
-    de_bruijn_graph_t graph;
-    minimizer_map_t<::std::size_t> collisions;
-
     while (begin != end) {
-      auto const& read_minimizers = *(begin++);
-      if (read_minimizers.size() < opts.k) {
-        continue;
-      }
-
-      detail::compact_minimizer current_window{
-        read_minimizers.begin(),
-        {}
-      };
-
-      for (::std::size_t i = 0; i < overlap_length; ++i) {
-        current_window.cached_hash.advance(read_minimizers[i].minimizer);
-      }
-
-      auto current_iter = graph.insert({current_window, {}}).first;
-      
-      for (::std::size_t i = 1; 
-           i < read_minimizers.size() - overlap_length + 1; ++i) {
-
-        ++current_window.minimizer;
-        current_window.cached_hash.rotate(
-          read_minimizers[i + overlap_length - 1].minimizer,
-          read_minimizers[i - 1].minimizer,
-          overlap_length
-        );
-
-        auto prefix_minimizer = current_iter.key();
-        auto& prefix_node = current_iter.value();
-
-        // TODO: consider using just a single read
-        prefix_node.out_edges.insert(current_window);
-
-        auto const [next_iter, inserted] = graph.insert({current_window, {}});
-        current_iter = next_iter;
-
-        auto& suffix_node = current_iter.value();
-        if (!suffix_node.fan_in && suffix_node.last_in.has_value() 
-              && suffix_node.last_in.value().cached_hash 
-                  != prefix_minimizer.cached_hash) {
-          suffix_node.fan_in = true;
-        }
-
-        suffix_node.last_in = prefix_minimizer;
-        
-        if (opts.check_collisions && !inserted) {
-          if (detail::collision(current_iter.key(), current_window, overlap_length)) {
-            ++collisions[current_window];
-          }
-        }
-      }
+      construct(graph, *(begin++), opts);
     }
-
-    if (opts.check_collisions) {
-      ::std::printf("de Bruijn node collisions: %lu\n", collisions.size());
-    }
-
-    return graph;
   }
 
 }

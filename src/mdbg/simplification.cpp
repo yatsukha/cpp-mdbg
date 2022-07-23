@@ -8,25 +8,33 @@ namespace mdbg {
     de_bruijn_graph_t const& dbg,
     detail::compact_minimizer const& starting_minimizer
     ) noexcept {
-    auto current_node = *dbg.find(starting_minimizer);
-    simplified_graph_t::mapped_type rv{current_node};
+    // auto current_node = *dbg.find(starting_minimizer);
+    de_bruijn_graph_t::accessor accessor;
+    dbg.find(accessor, starting_minimizer);
+    auto* current_node = &(*accessor);
+
+    simplified_graph_t::mapped_type rv{*current_node};
     
     // = \       / =
     // = = ===== = =
     // = /       \ =
     //   X       X
-    while (current_node.second.out_edges.size() < 2) {
-      if (current_node.second.out_edges.empty()) {
+    while (current_node->second.out_edges.size() < 2) {
+      if (current_node->second.out_edges.empty()) {
         break;
       }
 
-      current_node = *dbg.find(*current_node.second.out_edges.begin());
+      // TODO: is this needed?
+      accessor.release();
+      // current_node = *dbg.find(*current_node.second.out_edges.begin());
+      dbg.find(accessor, *current_node->second.out_edges.begin());
+      current_node = &(*accessor);
       
-      if (current_node.second.fan_in) {
+      if (current_node->second.fan_in) {
         break;
       }
 
-      rv.push_back(current_node);
+      rv.push_back(*current_node);
     }
 
     return rv;

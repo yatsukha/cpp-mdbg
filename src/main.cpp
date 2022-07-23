@@ -1,4 +1,3 @@
-#include "mdbg/simplification.hpp"
 #include <algorithm>
 #include <atomic>
 #include <cmath>
@@ -6,12 +5,14 @@
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
+#include <future>
 #include <iostream>
 #include <memory>
 #include <mutex>
 #include <ostream>
 #include <string>
 
+#include <mdbg/simplification.hpp>
 #include <mdbg/construction.hpp>
 #include <mdbg/util.hpp>
 #include <mdbg/minimizers.hpp>
@@ -21,54 +22,55 @@
 
 #include <thread_pool_include.hpp>
 
+#include <tbb/concurrent_hash_map.h>
+#include <tbb/parallel_for.h>
+#include <tbb/blocked_range.h>
+#include <tbb/global_control.h>
+
 void construct_from(
   ::mdbg::sequences_t const& seqs,
-  ::thread_pool& pool,
   ::mdbg::command_line_options const& opts,
   char const* print_prefix = ""
 ) noexcept {
   auto timer = ::mdbg::timer{};
 
   ::std::vector<::std::vector<::mdbg::detected_minimizer>> detected(seqs.size());
-  ::std::vector<::std::future<bool>> detected_futures;
-
-  for (::std::size_t i = 0; i < detected.size(); ++i) {
-    detected_futures.emplace_back(
-      pool.submit([&seqs, &detected, &opts, i]{
-        detected[i] = ::mdbg::detect_minimizers(*seqs[i], i, opts);
-      })
-    );
-  }
-
-  // pool.wait_for_tasks();
-
-  ::std::size_t sum = 0;
   ::std::vector<::std::size_t> stats(detected.size());
 
-  for (::std::size_t i = 0; i < detected.size(); ++i) {
-    detected_futures[i].get();
-    stats[i] = detected[i].size();
-    sum += detected[i].size();
-  }
+  ::tbb::parallel_for(
+    ::tbb::blocked_range<::std::size_t>(0, seqs.size()),
+    [&detected, &seqs, &opts, &stats](
+      ::tbb::blocked_range<::std::size_t> const& r
+    ) {
+      for (auto i = r.begin(); i != r.end(); ++i) {
+        detected[i] = ::mdbg::detect_minimizers(*seqs[i], i, opts);
+        stats[i] = detected[i].size();
+      }
+    });
 
-  sum /= detected.size();
   auto const time = timer.reset_ms();
   ::std::sort(stats.begin(), stats.end());
+  auto const get_percentile = [&stats](double const percentile) {
+    return stats[static_cast<::std::size_t>(
+      static_cast<double>(stats.size()) * (1.0 - percentile))];
+  };
 
   ::std::printf(
     "%sdetected minimizers in %ld ms\n"
     "%sminimizers per read:\n"
-    "  average:           %lu\n"
-    "  median:            %lu\n"
-    "  99.9th percentile: %lu\n"
-    "  min:               %lu\n",
+    "  median:             %lu\n"
+    "  90th    percentile: %lu\n"
+    "  99th    percentile: %lu\n"
+    "  99.9th  percentile: %lu\n"
+    "  99.99th percentile: %lu\n"
+    "  min:                %lu\n",
     print_prefix, time,
     print_prefix,
-    sum,
-    stats[stats.size() / 2],
-    stats[
-      static_cast<::std::size_t>(
-        static_cast<double>(stats.size()) * (1.0 - 0.999))],
+    get_percentile(0.5),
+    get_percentile(0.9),
+    get_percentile(0.99),
+    get_percentile(0.999),
+    get_percentile(0.9999),
     stats.front());
   ::std::fflush(stdout);
   
@@ -78,11 +80,18 @@ void construct_from(
 
   timer.reset_ms();
 
-  auto const& graph =
-    ::mdbg::construct(detected.begin(), detected.end(), opts);
+  ::mdbg::de_bruijn_graph_t graph;
+
+  ::tbb::parallel_for(
+    ::tbb::blocked_range<::std::size_t>(0, detected.size()), 
+    [&detected, &graph, &opts](::tbb::blocked_range<::std::size_t> const& r) {
+      for (auto i = r.begin(); i != r.end(); ++i) {
+        ::mdbg::construct(graph, detected[i], opts);
+      }
+    });
 
   ::std::printf(
-    "%sassembled de Bruijn graph (k = %lu) with %lu nodes in %ld ms\n",
+    "%sassembled de Bruijn graph (k = %lu) with %lu node(s) in %ld ms\n",
     print_prefix, opts.k, graph.size(), timer.reset_ms());
   ::std::fflush(stdout);
 
@@ -91,7 +100,7 @@ void construct_from(
   if (opts.unitigs) {
     simplified = ::mdbg::simplify(graph);
     ::std::printf(
-      "%ssimplified to %lu nodes in %ld ms\n",
+      "%ssimplified to %lu node(s) in %ld ms\n",
       print_prefix, simplified.size(), timer.reset_ms());
     ::std::fflush(stdout);
   }
@@ -105,6 +114,10 @@ void construct_from(
     if (opts.unitigs) {
       ::mdbg::write_gfa(out, simplified, seqs, opts);
     } else {
+      ::std::fprintf(
+        stderr, 
+        "non-simplified graph output is deprecated and may not work as expected; "
+        "use -u\n");
       ::mdbg::write_gfa(out, graph, seqs, opts);
     }
 
@@ -119,7 +132,7 @@ void construct_from(
 
 
 int main(int argc, char** argv) {
-  auto opts = ::mdbg::command_line_options::parse(argc, argv); 
+  auto opts = ::mdbg::command_line_options::parse(argc, argv);
   auto timer = ::mdbg::timer{};
 
   if (opts.dry_run) {
@@ -136,10 +149,12 @@ int main(int argc, char** argv) {
     "loaded %lu sequences in %ld ms\n", seqs.size(), timer.reset_ms());
 
   ::thread_pool pool{opts.threads};
+  ::tbb::global_control max_parallelism{
+    ::tbb::global_control::max_allowed_parallelism, pool.get_thread_count()};
 
   if (!opts.trio_binning) {
     opts.output_prefix += ".gfa";
-    ::construct_from(seqs, pool, opts);
+    ::construct_from(seqs, opts);
     ::std::exit(EXIT_SUCCESS);
   }
 
@@ -178,15 +193,15 @@ int main(int argc, char** argv) {
   auto opts_0 = opts;
   opts_0.output_prefix += ".0.gfa";
 
-  pool.submit([&filtered, &pool, &opts_0]{
-    ::construct_from(filtered.first, pool, opts_0, "[haplotype 0] ");
+  pool.submit([&filtered, &opts_0]{
+    ::construct_from(filtered.first, opts_0, "[haplotype 0] ");
   });
 
   auto opts_1 = opts;
   opts_1.output_prefix += ".1.gfa";
 
-  pool.submit([&filtered, &pool, &opts_1]{
-    ::construct_from(filtered.second, pool, opts_1, "[haplotype 1] ");
+  pool.submit([&filtered, &opts_1]{
+    ::construct_from(filtered.second, opts_1, "[haplotype 1] ");
   });
 
   pool.wait_for_tasks();
