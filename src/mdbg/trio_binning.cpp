@@ -95,7 +95,6 @@ namespace mdbg {
 
     auto const k = opts.trio_binning->kmer_length;
     auto const mask = ~(static_cast<::std::uint64_t>(-1) << (2 * k));
-
     
     ::tbb::task_group task_group;
 
