@@ -105,6 +105,43 @@ For the minimizer length the default value of `l = 14` is a good starting point,
 while the graph node length `k` should be picked based on statistics. `k` in the range
 `[30, 200]` usually yields good results.
 
+## Results
+
+The assembler was evaluated using 32 threads.
+
+### Chromosome 20
+
+Binned chromosome 20 reads (SRR11292120.98) corrected with hifiasm. Metrics are measured
+in base pairs.
+
+Parameters: `k = 128, l = 7, d = 0.02`.
+
+|Metric|Value|
+|:--|--:|
+|Largest contig|23 211 403|
+|N50|17 621 059|
+|NG50|20 340 349|
+|NA50|16 560 680|
+|NGA50|20 339 689|
+|Genome fraction(%)|99.362|
+|Running time|22 seconds|
+
+### Complete set of reads used in the CHM13 project
+
+SRR11292120.98 corrected with hifiasm. Metrics are measured in base pairs.
+
+Parameters: `k = 170, l = 14, d = 0.01`.
+
+|Metric|Value|
+|:--|--:|
+|Largest contig|13 768 554|
+|N50|2 255 723|
+|NG50|3 672 445|
+|NA50|2 105 776|
+|NGA50|3 424 718|
+|Genome fraction(%)|96.389|
+|Running time|17 minutes 45 seconds|
+
 ## README references
 <a id="0">[0]</a> 
 Barış Ekim, Bonnie Berger, and Rayan Chikhi.
