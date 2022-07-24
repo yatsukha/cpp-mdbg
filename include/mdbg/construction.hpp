@@ -85,13 +85,17 @@ namespace mdbg {
       detail::compact_minimizer_eq
     >;
 
-  using concurrent_de_bruijn_graph_t = tbb::concurrent_hash_map<
-    detail::compact_minimizer,
-    detail::dbg_node,
-    detail::compact_hash_eq
-  >;
+  template<typename V>
+  using concurrent_minimizer_map_t = 
+    tbb::concurrent_hash_map<
+      detail::compact_minimizer,
+      V,
+      detail::compact_hash_eq
+    >;
 
-  // using de_bruijn_graph_t = minimizer_map_t<detail::dbg_node>;
+  using concurrent_de_bruijn_graph_t = 
+    concurrent_minimizer_map_t<detail::dbg_node>;
+
   using de_bruijn_graph_t = concurrent_de_bruijn_graph_t;
 
   void construct(

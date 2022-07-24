@@ -9,7 +9,7 @@
 namespace mdbg {
 
   using simplified_graph_t =
-    minimizer_map_t<::std::vector<de_bruijn_graph_t::value_type>>;
+    concurrent_minimizer_map_t<::std::vector<de_bruijn_graph_t::value_type>>;
 
   simplified_graph_t simplify(de_bruijn_graph_t const& dbg) noexcept;
 

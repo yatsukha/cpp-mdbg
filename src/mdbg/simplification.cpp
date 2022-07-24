@@ -1,17 +1,38 @@
 #include <cstdio>
+#include <mutex>
+
 #include <mdbg/simplification.hpp>
 #include <mdbg/construction.hpp>
 
+#include <tbb/task_group.h>
+
 namespace mdbg {
+
 
   simplified_graph_t::mapped_type unitig(
     de_bruijn_graph_t const& dbg,
     detail::compact_minimizer const& starting_minimizer
-    ) noexcept {
-    // auto current_node = *dbg.find(starting_minimizer);
-    de_bruijn_graph_t::accessor accessor;
+  ) noexcept {
+    // we lose quite a bit of performance because we are
+    // reading from a non changing concurrent map
+    // tbb::concurrent_hash_map doesn't support
+    // non locking read only access when you can guarantee
+    // that the map will not change
+    //
+    // as observed with graph construction we are ~2x
+    // slower on a single thread and we break even with
+    // 2 threads - this is acceptable as we don't expect
+    // to run this with less than 4 threads, and usually
+    // we use at least 32
+
+    de_bruijn_graph_t::const_accessor accessor;
     dbg.find(accessor, starting_minimizer);
-    auto* current_node = &(*accessor);
+    auto const* current_node = &(*accessor);
+
+    // accessor.release() does not do much in terms of performance
+    // and even though we know the hash_map is not going to change
+    // better to avoid it because surely UB
+
 
     simplified_graph_t::mapped_type rv{*current_node};
     
@@ -24,9 +45,6 @@ namespace mdbg {
         break;
       }
 
-      // TODO: is this needed?
-      accessor.release();
-      // current_node = *dbg.find(*current_node.second.out_edges.begin());
       dbg.find(accessor, *current_node->second.out_edges.begin());
       current_node = &(*accessor);
       
@@ -40,35 +58,49 @@ namespace mdbg {
     return rv;
   }
 
+  void unitig_task(
+    simplified_graph_t& simplified,
+    detail::compact_minimizer const minimizer,
+    de_bruijn_graph_t const& dbg,
+    ::std::mutex& to_process_mutex,
+    ::tbb::task_group& to_process
+  ) noexcept {
+    if (simplified.count(minimizer)) {
+      return;
+    }
+
+    auto const& chain = unitig(dbg, minimizer);
+    for (auto const& out_edge : chain.back().second.out_edges) {
+      // checking if out_edge is in simplified here does not yield any performance
+      to_process_mutex.lock();
+      to_process.run([&, minimizer = out_edge]{
+        unitig_task(simplified, minimizer, dbg, to_process_mutex, to_process);
+      });
+      to_process_mutex.unlock();
+    }
+
+    simplified.insert({minimizer, ::std::move(chain)});
+  }
+
   simplified_graph_t simplify(de_bruijn_graph_t const& dbg) noexcept {
     if (dbg.empty()) {
-      return {};
+      return simplified_graph_t{};
     }
 
-    ::std::vector<detail::compact_minimizer> to_process;
-
-    for (auto const& [minimizer, node] : dbg) {
-      if (node.fan_in || !node.last_in.has_value()) {
-        to_process.push_back(minimizer);
-      }
-    }
+    ::std::mutex to_process_mutex;
+    ::tbb::task_group to_process;
 
     simplified_graph_t simplified;
 
-    while (to_process.size()) {
-      auto const minimizer = to_process.back();
-      to_process.pop_back();
-
-      if (simplified.count(minimizer)) {
-        continue;
-      }
-
-      auto const& chain = (simplified[minimizer] = unitig(dbg, minimizer));
-      for (auto const& out_edge : chain.back().second.out_edges) {
-        to_process.push_back(out_edge);
+    for (auto const& [minimizer_ref, node] : dbg) {
+      if (node.fan_in || !node.last_in.has_value()) {
+        to_process.run([&, minimizer = minimizer_ref]{
+          unitig_task(simplified, minimizer, dbg, to_process_mutex, to_process);
+        });
       }
     }
 
+    to_process.wait();
     return simplified;
   }
 
@@ -81,16 +113,16 @@ namespace mdbg {
   ) noexcept {
     out << "H\tVN:Z:1.0" << "\n";
 
-    minimizer_map_t<::std::size_t> indexes;
-
-    auto get_index = [&indexes, index = 0](auto&& key) mutable -> ::std::size_t {
-      auto const [iter, is_inserted] = indexes.try_emplace(key, index);
-      index += is_inserted;
-      return iter.value();
+    auto const output_minimizer_name = [&out](auto&& minimizer) {
+      out << "m:" << minimizer->read
+          << ":" << minimizer->offset
+          << "\t";
     };
 
     for (auto const& [starting_minimizer, minimizer_node_pairs] : graph) {
-      out << "S\t" << get_index(starting_minimizer) << "\t";
+      out << "S\t";
+      output_minimizer_name(starting_minimizer.minimizer);
+
       ::std::size_t total_len = 0;
 
       for (auto const& [current_minimizer, node_data] : minimizer_node_pairs) {
@@ -125,10 +157,11 @@ namespace mdbg {
       auto const& [prefix_minimizer, prefix_node] = minimizer_node_pairs.back();
 
       for (auto const& out_key : prefix_node.out_edges) {
-        out << "L\t" << get_index(starting_minimizer) 
-            << "\t+\t" << get_index(out_key) << "\t+\t"
-            << 0 << "M"
-            << "\n";
+        out << "L\t"; 
+        output_minimizer_name(starting_minimizer.minimizer);
+        out << "+\t";
+        output_minimizer_name(out_key.minimizer);
+        out << "+\t" << 0 << "M" << "\n";
       }
     }
 
