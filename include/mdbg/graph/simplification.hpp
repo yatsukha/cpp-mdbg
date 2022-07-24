@@ -1,12 +1,12 @@
 #pragma once
 
-#include <mdbg/construction.hpp>
+#include <mdbg/graph/construction.hpp>
 
 #include <vector>
 
 #include <tsl/robin_map.h>
 
-namespace mdbg {
+namespace mdbg::graph {
 
   using simplified_graph_t =
     concurrent_minimizer_map_t<::std::vector<de_bruijn_graph_t::value_type>>;

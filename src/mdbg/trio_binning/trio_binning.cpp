@@ -1,4 +1,4 @@
-#include <mdbg/trio_binning.hpp>
+#include <mdbg/trio_binning/trio_binning.hpp>
 
 #include <biosoup_include.hpp>
 
@@ -6,7 +6,7 @@
 #include <mutex>
 #include <tbb/task_group.h>
 
-namespace mdbg {
+namespace mdbg::trio_binning {
 
   kmer_counts_t count_kmers(
     sequences_t const& seqs,

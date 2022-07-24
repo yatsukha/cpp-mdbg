@@ -14,18 +14,14 @@
 #include <optional>
 #include <ostream>
 
-namespace mdbg {
+namespace mdbg::graph {
 
-  // TODO: rethink having this in detail
   namespace detail {
 
     using minimizer_iter_t = read_minimizers_t::const_iterator;
     
     struct compact_minimizer {
       minimizer_iter_t minimizer;
-      // TODO: identify with reverse by having two hashes
-      //       a regular and reverse one
-      //       two k-min-mers are equal if either of the hashes match with other
       ::mdbg::hash128 cached_hash;
     };
 
@@ -87,7 +83,7 @@ namespace mdbg {
 
   template<typename V>
   using concurrent_minimizer_map_t = 
-    tbb::concurrent_hash_map<
+    ::tbb::concurrent_hash_map<
       detail::compact_minimizer,
       V,
       detail::compact_hash_eq
@@ -122,12 +118,5 @@ namespace mdbg {
       auto const end = begin + static_cast<::std::int64_t>(length) - 1;
       return end->offset - begin->offset;
   }
-
-  void write_gfa(
-    ::std::ostream& out,
-    de_bruijn_graph_t const& graph,
-    sequences_t const& reads,
-    command_line_options const& opts
-  ) noexcept;
 
 }

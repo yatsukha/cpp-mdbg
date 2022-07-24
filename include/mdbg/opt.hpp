@@ -23,9 +23,8 @@ namespace mdbg {
 
     bool analysis;
     bool dry_run;
-    bool unitigs;
     bool sequences;
-    bool check_collisions;
+    // bool check_collisions;
 
     ::std::optional<trio_binning_options> trio_binning = ::std::nullopt;
 

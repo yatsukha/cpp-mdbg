@@ -13,11 +13,11 @@ add_executable(sim src/sim/main.cpp)
 add_executable(mdbg 
   src/main.cpp 
   src/mdbg/minimizers.cpp
-  src/mdbg/construction.cpp
+  src/mdbg/graph/construction.cpp
   src/mdbg/opt.cpp
   src/mdbg/io.cpp
-  src/mdbg/simplification.cpp
-  src/mdbg/trio_binning.cpp)
+  src/mdbg/graph/simplification.cpp
+  src/mdbg/trio_binning/trio_binning.cpp)
 
 include(FetchContent)
 

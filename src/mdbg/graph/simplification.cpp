@@ -1,12 +1,12 @@
 #include <cstdio>
 #include <mutex>
 
-#include <mdbg/simplification.hpp>
-#include <mdbg/construction.hpp>
+#include <mdbg/graph/simplification.hpp>
+#include <mdbg/graph/construction.hpp>
 
 #include <tbb/task_group.h>
 
-namespace mdbg {
+namespace mdbg::graph {
 
 
   simplified_graph_t::mapped_type unitig(
@@ -104,7 +104,6 @@ namespace mdbg {
     return simplified;
   }
 
-  // TODO: code dup
   void write_gfa(
     ::std::ostream& out,
     simplified_graph_t const& graph,

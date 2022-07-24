@@ -7,7 +7,7 @@
 
 #include <cstdint>
 
-namespace mdbg {
+namespace mdbg::trio_binning {
 
   using kmer_counts_t = ::tsl::robin_map<::std::uint64_t, ::std::size_t>;
 
@@ -21,7 +21,6 @@ namespace mdbg {
     kmer_counts_t& r
   ) noexcept;
 
-  // TODO: better namespacing
   ::std::pair<sequences_t, sequences_t> filter_reads(
     sequences_t const& seqs,
     ::std::vector<kmer_counts_t> const& counts,

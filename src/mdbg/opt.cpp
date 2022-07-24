@@ -8,7 +8,6 @@
 
 namespace mdbg {
 
-  // TODO: simplify a bit
   trio_binning_options parse_trio_binning(::std::string const& arg) noexcept {
     auto const assert_not_npos = [](::std::size_t const index) {
       if (index == ::std::string::npos) {
@@ -51,7 +50,7 @@ namespace mdbg {
   command_line_options command_line_options::parse(int argc, char** argv) noexcept {
     ::cxxopts::Options options(
         "mdbg", 
-        "C++ minimizer based de Bruijn assembler.");
+        "C++ minimizer based de Bruijn graph assembler.");
 
     options.add_options()
       ("t,threads", 
@@ -59,17 +58,17 @@ namespace mdbg {
         "NOTE: Default of 0 means max concurrency.",
         ::cxxopts::value<::std::size_t>()->default_value("0"))
       ("k,kmers", "Length of window of minimizers to use for the de Bruijn graph.",
-        ::cxxopts::value<::std::size_t>()->default_value("5"))
+        ::cxxopts::value<::std::size_t>()->default_value("33"))
       ("l,letters", "Length of the minimizers.",
-        ::cxxopts::value<::std::size_t>()->default_value("7"))
+        ::cxxopts::value<::std::size_t>()->default_value("14"))
       ("d,density", "Density of the universe minimizers.",
-        ::cxxopts::value<double>()->default_value("0.008"))
+        ::cxxopts::value<double>()->default_value("0.005"))
       ("a,analysis",
         "Exit after outputting minimizer statistics for given reads.",
         ::cxxopts::value<bool>()
           ->default_value("0")
           ->implicit_value("1"))
-      ("dry-run", "Dry run, do not write to output.",
+      ("dry-run", "Dry run, do not write.",
         ::cxxopts::value<bool>()
           ->default_value("0")
           ->implicit_value("1"))
@@ -78,18 +77,12 @@ namespace mdbg {
         ::cxxopts::value<bool>()
           ->default_value("0")
           ->implicit_value("1"))
-      ("u,unitigs",
-       "Simplify straight portions of the graph into unitigs. "
-       "Incurs additional running time!",
-        ::cxxopts::value<bool>()
-          ->default_value("0")
-          ->implicit_value("1"))
-      ("c,check-collisions",
-       "Check for node collisions when building the de Bruijn graph. "
-       "Incurs runtime overhead!",
-        ::cxxopts::value<bool>()
-          ->default_value("0")
-          ->implicit_value("1"))
+      // ("c,check-collisions",
+      //  "Check for node collisions when building the de Bruijn graph. "
+      //  "Incurs runtime overhead!",
+      //   ::cxxopts::value<bool>()
+      //     ->default_value("0")
+      //     ->implicit_value("1"))
       ("i,input", "Input reads.", ::cxxopts::value<::std::string>())
       ("o,output", "Output prefix for the graph(s) formatted as GFA.",
         ::cxxopts::value<::std::string>())
@@ -121,9 +114,8 @@ namespace mdbg {
 
       rv.analysis = r["analysis"].as<decltype(rv.analysis)>();
       rv.dry_run = r["dry-run"].as<decltype(rv.dry_run)>();
-      rv.unitigs = r["unitigs"].as<decltype(rv.unitigs)>();
       rv.sequences = r["sequences"].as<decltype(rv.sequences)>();
-      rv.check_collisions = r["check-collisions"].as<decltype(rv.check_collisions)>();
+      // rv.check_collisions = r["check-collisions"].as<decltype(rv.check_collisions)>();
 
       if (auto const& trio_binning_arg = r["trio-binning"].as<::std::string>();
           trio_binning_arg.length() > 0) {
@@ -145,7 +137,6 @@ namespace mdbg {
     out << "command_line_options(k=" << opts.k
         << ", l=" << opts.l
         << ", d=" << opts.d
-        << ", unitigs=" << opts.unitigs
         << ", sequences=" << opts.sequences
         << ", input=" << ::std::filesystem::absolute(opts.input)
         << ", output=" << ::std::filesystem::absolute(opts.output_prefix)

@@ -7,13 +7,13 @@
 #include <mutex>
 #include <string>
 
-#include <mdbg/simplification.hpp>
-#include <mdbg/construction.hpp>
+#include <mdbg/opt.hpp>
+#include <mdbg/io.hpp>
 #include <mdbg/util.hpp>
 #include <mdbg/minimizers.hpp>
-#include <mdbg/io.hpp>
-#include <mdbg/opt.hpp>
-#include <mdbg/trio_binning.hpp>
+#include <mdbg/graph/simplification.hpp>
+#include <mdbg/graph/construction.hpp>
+#include <mdbg/trio_binning/trio_binning.hpp>
 
 #include <tbb/parallel_for.h>
 #include <tbb/blocked_range.h>
@@ -73,13 +73,13 @@ void construct_from(
 
   timer.reset_ms();
 
-  ::mdbg::de_bruijn_graph_t graph;
+  ::mdbg::graph::de_bruijn_graph_t graph;
 
   ::tbb::parallel_for(
     ::tbb::blocked_range<::std::size_t>(0, detected.size()), 
     [&detected, &graph, &opts](::tbb::blocked_range<::std::size_t> const& r) {
       for (auto i = r.begin(); i != r.end(); ++i) {
-        ::mdbg::construct(graph, detected[i], opts);
+        ::mdbg::graph::construct(graph, detected[i], opts);
       }
     });
 
@@ -88,15 +88,12 @@ void construct_from(
     print_prefix, opts.k, graph.size(), timer.reset_ms());
   ::std::fflush(stdout);
 
-  ::mdbg::simplified_graph_t simplified;
+  auto const simplified = ::mdbg::graph::simplify(graph);
 
-  if (opts.unitigs) {
-    simplified = ::mdbg::simplify(graph);
-    ::std::printf(
-      "%ssimplified to %lu node(s) in %ld ms\n",
-      print_prefix, simplified.size(), timer.reset_ms());
-    ::std::fflush(stdout);
-  }
+  ::std::printf(
+    "%ssimplified to %lu node(s) in %ld ms\n",
+    print_prefix, simplified.size(), timer.reset_ms());
+  ::std::fflush(stdout);
 
   if (!opts.dry_run) {
     ::std::ofstream out{opts.output_prefix};
@@ -104,16 +101,8 @@ void construct_from(
       ::mdbg::terminate("unable to open/create given output file ", opts.output_prefix);
     }
 
-    if (opts.unitigs) {
-      ::mdbg::write_gfa(out, simplified, seqs, opts);
-    } else {
-      ::std::fprintf(
-        stderr, 
-        "non-simplified graph output is deprecated and may not work as expected; "
-        "use -u\n");
-      ::mdbg::write_gfa(out, graph, seqs, opts);
-    }
-
+    ::mdbg::graph::write_gfa(out, simplified, seqs, opts);
+    
     ::std::printf(
       "%swrote de Bruijn graph to '%s' in %ld ms\n",
       print_prefix,
@@ -153,17 +142,17 @@ int main(int argc, char** argv) {
     ::std::exit(EXIT_SUCCESS);
   }
 
-  ::std::vector<::mdbg::kmer_counts_t> counts(2);
+  ::std::vector<::mdbg::trio_binning::kmer_counts_t> counts(2);
   ::tbb::task_group task_group;
 
   task_group.run([&counts, &opts]{
-    counts[0] = ::mdbg::count_kmers(
+    counts[0] = ::mdbg::trio_binning::count_kmers(
       ::mdbg::load_sequences(opts.trio_binning->input_0),
       opts);
   });
 
   task_group.run([&counts, &opts]{
-    counts[1] = ::mdbg::count_kmers(
+    counts[1] = ::mdbg::trio_binning::count_kmers(
       ::mdbg::load_sequences(opts.trio_binning->input_1),
       opts);
   });
@@ -173,14 +162,13 @@ int main(int argc, char** argv) {
   ::std::printf(
     "loaded and counted kmers of haplotypes in %ld ms\n", timer.reset_ms());
 
-  ::mdbg::reduce_to_unique_kmers(counts[0], counts[1]);
+  ::mdbg::trio_binning::reduce_to_unique_kmers(counts[0], counts[1]);
   
   ::std::printf(
     "reduced to unique kmers (%lu, %lu) in %ld ms\n",
     counts[0].size(), counts[1].size(), timer.reset_ms());
 
-  // TODO: speed this part up with threadpool
-  auto const& filtered = ::mdbg::filter_reads(seqs, counts, opts);
+  auto const& filtered = ::mdbg::trio_binning::filter_reads(seqs, counts, opts);
 
   ::std::printf(
     "binned reads (0 - %lu, 1 - %lu) in %ld ms\n", 

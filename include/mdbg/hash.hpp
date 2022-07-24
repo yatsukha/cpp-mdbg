@@ -30,7 +30,6 @@ namespace mdbg {
 
       int const r = 47;
 
-
       k *= m;
       k ^= k >> r;
       k *= m;
@@ -38,8 +37,6 @@ namespace mdbg {
       h ^= k;
       h *= m;
 
-      // Completely arbitrary number, to prevent 0's
-      // from hashing to 0.
       h += 0xe6546b64;
 
       return h;
@@ -71,7 +68,6 @@ namespace mdbg {
 
       if (length < 64) {
         lower ^= out << length;
-        // TODO: is this correct?
         upper ^= out >> (64 - length);
       } else if (length < 128) { // shifting by 64 bits or more == UB
         upper ^= out << (length - 64);
