@@ -1,6 +1,6 @@
 # Minimizer-based de Bruijn Graph De Novo Assembler
 
-Master's thesis implementation under the supervision of prof. Mile Šikić - based on [[0]](0).
+Master's thesis implementation under the supervision of prof. Mile Šikić - based on [[0]](#0).
 
 The assembler uses a sparse representation of input reads in minimizer space - determined by
 the density parameter. By using a predetermined set of minimizers, the initial input reads are 
@@ -62,11 +62,14 @@ Usage:
 
 ### Running with a malloc proxy
 
-In some cases, better performance with a scalable multithreaded allocator can be achieved by
-replacing the standard malloc implementation with a TBB proxy:
+In some cases, better performance can be achieved by using an allocator designed for
+multithreaded usage such as the TBB malloc proxy:
 ```
 LD_PRELOAD=/usr/lib/libtbbmalloc_proxy.so.2 ./mdbg ...
 ```
+
+Depending on how you installed TBB it might be in different location such as
+`/opt/intel/oneapi/`, `~/anaconda3/pkgs/`, etc.
 
 ### Running tests
 
