@@ -114,6 +114,7 @@ namespace mdbg {
       auto r = options.parse(argc, argv);
 
       rv.threads = r["threads"].as<decltype(rv.threads)>();
+
       rv.k = r["k"].as<decltype(rv.k)>();
       rv.l = r["l"].as<decltype(rv.l)>();
       rv.d = r["d"].as<decltype(rv.d)>();

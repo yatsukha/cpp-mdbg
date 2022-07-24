@@ -1,15 +1,10 @@
 #include <algorithm>
-#include <atomic>
-#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
-#include <future>
 #include <iostream>
-#include <memory>
 #include <mutex>
-#include <ostream>
 #include <string>
 
 #include <mdbg/simplification.hpp>
@@ -20,12 +15,10 @@
 #include <mdbg/opt.hpp>
 #include <mdbg/trio_binning.hpp>
 
-#include <thread_pool_include.hpp>
-
-#include <tbb/concurrent_hash_map.h>
 #include <tbb/parallel_for.h>
 #include <tbb/blocked_range.h>
 #include <tbb/global_control.h>
+#include <tbb/task_group.h>
 
 void construct_from(
   ::mdbg::sequences_t const& seqs,
@@ -135,6 +128,11 @@ int main(int argc, char** argv) {
   auto opts = ::mdbg::command_line_options::parse(argc, argv);
   auto timer = ::mdbg::timer{};
 
+  if (opts.threads) {
+    ::tbb::global_control max_parallelism{
+      ::tbb::global_control::max_allowed_parallelism, opts.threads};
+  }
+
   if (opts.dry_run) {
     ::std::fprintf(stderr, "### DRY RUN  ###\n");
   }
@@ -148,9 +146,6 @@ int main(int argc, char** argv) {
   ::std::printf(
     "loaded %lu sequences in %ld ms\n", seqs.size(), timer.reset_ms());
 
-  ::thread_pool pool{opts.threads};
-  ::tbb::global_control max_parallelism{
-    ::tbb::global_control::max_allowed_parallelism, pool.get_thread_count()};
 
   if (!opts.trio_binning) {
     opts.output_prefix += ".gfa";
@@ -159,20 +154,21 @@ int main(int argc, char** argv) {
   }
 
   ::std::vector<::mdbg::kmer_counts_t> counts(2);
+  ::tbb::task_group task_group;
 
-  pool.submit([&counts, &opts]{
+  task_group.run([&counts, &opts]{
     counts[0] = ::mdbg::count_kmers(
       ::mdbg::load_sequences(opts.trio_binning->input_0),
       opts);
   });
 
-  pool.submit([&counts, &opts]{
+  task_group.run([&counts, &opts]{
     counts[1] = ::mdbg::count_kmers(
       ::mdbg::load_sequences(opts.trio_binning->input_1),
       opts);
   });
 
-  pool.wait_for_tasks();
+  task_group.wait();
 
   ::std::printf(
     "loaded and counted kmers of haplotypes in %ld ms\n", timer.reset_ms());
@@ -184,7 +180,7 @@ int main(int argc, char** argv) {
     counts[0].size(), counts[1].size(), timer.reset_ms());
 
   // TODO: speed this part up with threadpool
-  auto const& filtered = ::mdbg::filter_reads(pool, seqs, counts, opts);
+  auto const& filtered = ::mdbg::filter_reads(seqs, counts, opts);
 
   ::std::printf(
     "binned reads (0 - %lu, 1 - %lu) in %ld ms\n", 
@@ -193,16 +189,16 @@ int main(int argc, char** argv) {
   auto opts_0 = opts;
   opts_0.output_prefix += ".0.gfa";
 
-  pool.submit([&filtered, &opts_0]{
+  task_group.run([&filtered, &opts_0]{
     ::construct_from(filtered.first, opts_0, "[haplotype 0] ");
   });
 
   auto opts_1 = opts;
   opts_1.output_prefix += ".1.gfa";
 
-  pool.submit([&filtered, &opts_1]{
+  task_group.run([&filtered, &opts_1]{
     ::construct_from(filtered.second, opts_1, "[haplotype 1] ");
   });
 
-  pool.wait_for_tasks();
+  task_group.wait();
 }

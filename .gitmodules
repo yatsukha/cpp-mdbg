@@ -10,6 +10,3 @@
 [submodule "vendor/robin-map"]
 	path = vendor/robin-map
 	url = https://github.com/Tessil/robin-map
-[submodule "vendor/thread-pool"]
-	path = vendor/thread-pool
-	url = https://github.com/bshoshany/thread-pool

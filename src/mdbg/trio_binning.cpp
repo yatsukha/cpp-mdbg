@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <mutex>
+#include <tbb/task_group.h>
 
 namespace mdbg {
 
@@ -69,7 +70,6 @@ namespace mdbg {
   }
 
   ::std::pair<sequences_t, sequences_t> filter_reads(
-    ::thread_pool& pool,
     sequences_t const& seqs,
     ::std::vector<kmer_counts_t> const& counts,
     command_line_options const& opts
@@ -80,6 +80,7 @@ namespace mdbg {
     // TODO: code dup
     
     ::std::pair<sequences_t, sequences_t> rv;
+    // TODO: concurrent collection
     ::std::pair<::std::mutex, ::std::mutex> filtered_guards{};
 
     // TODO: first and second getting annoyting
@@ -95,8 +96,11 @@ namespace mdbg {
     auto const k = opts.trio_binning->kmer_length;
     auto const mask = ~(static_cast<::std::uint64_t>(-1) << (2 * k));
 
+    
+    ::tbb::task_group task_group;
+
     for (auto const& seq : seqs) {
-      pool.submit([&seq, add_first, add_second, k, mask, &counts]{
+      task_group.run([&seq, add_first, add_second, k, mask, &counts]{
         ::std::uint64_t kmer = 0;
         ::std::pair<::std::size_t, ::std::size_t> unique_counts = {0, 0};
 
@@ -142,7 +146,7 @@ namespace mdbg {
       });
     }
 
-    pool.wait_for_tasks();
+    task_group.wait();
     return rv;
   }
 
