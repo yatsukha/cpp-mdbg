@@ -19,9 +19,6 @@ add_executable(mdbg
   src/mdbg/simplification.cpp
   src/mdbg/trio_binning.cpp)
 
-add_executable(resolve
-  src/resolve/main.cpp)
-
 include(FetchContent)
 
 FetchContent_Declare(
@@ -48,19 +45,16 @@ target_include_directories(mdbg PRIVATE
   "vendor/thread-pool"
   ${TBB_INCLUDE_DIRS})
 
-target_include_directories(resolve PRIVATE
-  "include"
-  "vendor/cxxopts/include"
-  "vendor/robin-map/include")
-
 ## tests
-
-add_executable(test
-  test/nucleic_acid_iter.cpp
-  test/custom_hash.cpp)
 
 find_package(Catch2 2 REQUIRED)
 
-target_link_libraries(test PRIVATE Catch2::Catch2WithMain fast biosoup::biosoup)
-target_include_directories(test PRIVATE 
-  "include" "vendor/ntHash" "vendor/biosoup/include")
+IF (Catch2_FOUND)
+  add_executable(test
+    test/nucleic_acid_iter.cpp
+    test/custom_hash.cpp)
+
+  target_link_libraries(test PRIVATE Catch2::Catch2WithMain fast biosoup::biosoup)
+  target_include_directories(test PRIVATE 
+    "include" "vendor/ntHash" "vendor/biosoup/include")
+ENDIF ()
