@@ -57,7 +57,7 @@ namespace mdbg {
         "Maximum number of concurrent threads. "
         "NOTE: Default of 0 means max concurrency.",
         ::cxxopts::value<::std::size_t>()->default_value("0"))
-      ("k,kmers", "Length of window of minimizers to use for the de Bruijn graph.",
+      ("k,kmers", "Length of the window of minimizers to use for the de Bruijn graph.",
         ::cxxopts::value<::std::size_t>()->default_value("33"))
       ("l,letters", "Length of the minimizers.",
         ::cxxopts::value<::std::size_t>()->default_value("14"))
@@ -89,7 +89,7 @@ namespace mdbg {
       ("trio-binning",
         "Format: K:T:reads0.fa:reads1.fa\n"
         "Enables trio binning using K length kmers for counting; "
-        "discards kmers with frequency below T.\n"
+        "discards kmers with a frequency below T.\n"
         "K must be <= 32.",
         ::cxxopts::value<::std::string>()
           ->default_value(""));
