@@ -68,7 +68,7 @@ multithreaded usage such as the TBB malloc proxy:
 LD_PRELOAD=/usr/lib/libtbbmalloc_proxy.so.2 ./mdbg ...
 ```
 
-Depending on how you installed TBB it might be in different location such as
+Depending on how you installed TBB it might be in a different location such as
 `/opt/intel/oneapi/`, `~/anaconda3/pkgs/`, etc.
 
 ### Running tests
