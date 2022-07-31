@@ -1,49 +1,12 @@
+#include "mdbg/minimizers.hpp"
+#include "mdbg/opt.hpp"
 #include <mdbg/io.hpp>
+#include <mdbg/io/parser.hpp>
 #include <mdbg/util.hpp>
 
-#include <fast_include.hpp>
-
 #include <filesystem>
-
-::std::atomic_uint32_t biosoup::NucleicAcid::num_objects{0};
-
-namespace mdbg {
-
-  struct string_fasta_factory {
-    
-    ::std::unique_ptr<::std::string> CreateSequence(
-        char const*, char const*,
-        char const* begin, char const* end) const {
-      return ::std::make_unique<::std::string>(::std::string(begin, end));
-    }
-
-  };
-
-  struct string_fastq_factory {
-    auto CreateSequence(
-        char const* name_begin, char const* name_end,
-        char const* begin, char const* end,
-        char const*, char const*) const {
-      return string_fasta_factory{}.CreateSequence(name_begin, name_end, begin, end);
-    }
-  };
-}
-
-namespace fast {
-
-  template<>
-  struct FastaFactoryFor<::std::string> {
-    using Type = ::mdbg::string_fasta_factory; 
-    static_assert(IsFastaFactoryForV<Type, ::std::string>);
-  };
-
-  template<>
-  struct FastqFactoryFor<::std::string> {
-    using Type = ::mdbg::string_fastq_factory; 
-    static_assert(IsFastqFactoryForV<Type, ::std::string>);
-  };
-
-}
+#include <mutex>
+#include <tbb/task_group.h>
 
 namespace mdbg {
 
@@ -76,17 +39,45 @@ namespace mdbg {
     return rv;
   }
 
-  sequences_t
-  load_sequences(::std::string const& input) noexcept {
+  processed_sequences_t load_sequences(
+    ::std::string const& input,
+    command_line_options const& opts
+  ) noexcept {
     if (!::std::filesystem::exists(input)) {
       ::mdbg::terminate("Could not locate given file: ", input);
     }
 
     if (fastq(extension(input))) {
-      return convert(::fast::CreateFastqParser<::std::string>(input.c_str()).Parse());
+      ::mdbg::terminate(
+          ".fq and .fq.gz are currently unsupported, "
+          "use seqtk to convert to .fa or .fa.gz");
     }
 
-    return convert(::fast::CreateFastaParser<::std::string>(input.c_str()).Parse());
+    processed_sequences_t rv;
+    ::std::mutex rv_lock;
+    ::tbb::task_group tg;
+
+    io::fasta_constumer consumer = 
+      [&rv, &tg, &opts, &rv_lock, index = 0](
+        auto&&, auto&& seq
+      ) mutable {
+        rv.first.emplace_back(
+          ::std::make_shared<::std::string>(
+            ::std::forward<::std::string>(seq)));
+
+        tg.run([&rv, &seq = *rv.first.back(), &opts, read_id = index++, &rv_lock]{
+          auto minimizers = ::mdbg::detect_minimizers(seq, read_id, opts);
+          rv_lock.lock();
+          rv.second.emplace_back(::std::move(minimizers));
+          rv_lock.unlock();
+        });
+      };
+
+  ::mdbg::io::parse_fasta(input.c_str(), consumer);
+
+    tg.wait();
+
+    return rv;
   }
 
 }

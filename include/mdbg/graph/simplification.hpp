@@ -3,8 +3,7 @@
 #include <mdbg/graph/construction.hpp>
 
 #include <vector>
-
-#include <tsl/robin_map.h>
+#include <functional>
 
 namespace mdbg::graph {
 
@@ -13,10 +12,12 @@ namespace mdbg::graph {
 
   simplified_graph_t simplify(de_bruijn_graph_t const& dbg) noexcept;
 
+  using sequence_index_t = ::std::function<::std::string const&(::std::size_t const)>;
+
   void write_gfa(
     ::std::ostream& out,
     simplified_graph_t const& graph,
-    sequences_t const& reads,
+    sequence_index_t const& index,
     command_line_options const& opts
   ) noexcept;
 

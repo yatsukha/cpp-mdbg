@@ -107,7 +107,7 @@ namespace mdbg::graph {
   void write_gfa(
     ::std::ostream& out,
     simplified_graph_t const& graph,
-    sequences_t const& reads,
+    sequence_index_t const& index,
     command_line_options const& opts
   ) noexcept {
     out << "H\tVN:Z:1.0" << "\n";
@@ -137,7 +137,7 @@ namespace mdbg::graph {
         total_len += len;
         
         if (opts.sequences) {
-          auto const& read = *reads[begin->read];
+          auto const& read = index(begin->read);
           out.write(read.data() + begin->offset,
             static_cast<::std::streamsize>(len));
         }

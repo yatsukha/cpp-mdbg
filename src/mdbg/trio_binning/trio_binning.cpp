@@ -1,10 +1,33 @@
 #include <mdbg/trio_binning/trio_binning.hpp>
 
-#include <biosoup_include.hpp>
-
 #include <cstdint>
 #include <mutex>
+
 #include <tbb/task_group.h>
+
+// https://github.com/rvaser/biosoup/blob/master/include/biosoup/nucleic_acid.hpp
+namespace biosoup {
+
+  constexpr static std::uint8_t kNucleotideCoder[] = {
+      255, 255, 255, 255, 255, 255, 255, 255,
+      255, 255, 255, 255, 255, 255, 255, 255,
+      255, 255, 255, 255, 255, 255, 255, 255,
+      255, 255, 255, 255, 255, 255, 255, 255,
+      255, 255, 255, 255, 255, 255, 255, 255,
+      255, 255, 255, 255, 255,   0, 255, 255,
+      255, 255, 255, 255, 255, 255, 255, 255,
+      255, 255, 255, 255, 255, 255, 255, 255,
+      255,   0,   1 ,  1,   0, 255, 255,   2,
+        3, 255, 255,   2, 255,   1,   0, 255,
+      255, 255,   0,   1,   3,   3,   2,   0,
+      255,   3, 255, 255, 255, 255, 255, 255,
+      255,   0,   1,   1,   0, 255, 255,   2,
+        3, 255, 255,   2, 255,   1,   0, 255,
+      255, 255,   0,   1,   3,   3,   2,   0,
+      255,   3, 255, 255, 255, 255, 255, 255
+  };
+
+}
 
 namespace mdbg::trio_binning {
 
