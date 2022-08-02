@@ -143,4 +143,7 @@ int main(int argc, char** argv) {
       timer.reset_ms());
     ::std::fflush(stdout);
   }
+
+  // no side effects other than memory release at this point
+  ::std::quick_exit(EXIT_SUCCESS);
 }
