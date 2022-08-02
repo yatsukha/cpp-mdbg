@@ -6,6 +6,7 @@
 #include <iostream>
 #include <mutex>
 #include <string>
+#include <thread>
 
 #include <mdbg/opt.hpp>
 #include <mdbg/io/parser.hpp>
@@ -24,10 +25,9 @@ int main(int argc, char** argv) {
   auto opts = ::mdbg::command_line_options::parse(argc, argv);
   auto timer = ::mdbg::timer{};
 
-  if (opts.threads) {
-    ::tbb::global_control max_parallelism{
-      ::tbb::global_control::max_allowed_parallelism, opts.threads};
-  }
+  ::tbb::global_control max_parallelism{
+    ::tbb::global_control::max_allowed_parallelism, 
+    opts.threads ? opts.threads : ::std::thread::hardware_concurrency()};
 
   if (opts.dry_run) {
     ::std::fprintf(stderr, "### DRY RUN  ###\n");
