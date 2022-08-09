@@ -46,7 +46,7 @@ int main(int argc, char** argv) {
   ::tbb::task_group tg;
   ::std::mutex tg_lock;
 
-  static char const fmt_0[] = "\rsequences -- loaded: %8d,";
+  static char const fmt_0[] = "\rsequences -- loaded: %8ld,";
   static char const fmt_1[] = " processed: %8ld,";
   static char const fmt_2[] = " assembled: %8ld";
 
