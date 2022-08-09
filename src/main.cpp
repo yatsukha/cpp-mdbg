@@ -15,6 +15,7 @@
 #include <mdbg/graph/simplification.hpp>
 #include <mdbg/graph/construction.hpp>
 #include <mdbg/trio_binning/trio_binning.hpp>
+#include <mdbg/refreshing_table_display.hpp>
 
 #include <tbb/parallel_for.h>
 #include <tbb/blocked_range.h>
@@ -41,40 +42,56 @@ int main(int argc, char** argv) {
 
   ::std::vector<::std::unique_ptr<processed_pair_t>> processed;
   ::mdbg::graph::de_bruijn_graph_t graph;
+
   ::tbb::task_group tg;
   ::std::mutex tg_lock;
 
+  static char const fmt_0[] = "\rsequences -- loaded: %8d,";
+  static char const fmt_1[] = " processed: %8ld,";
+  static char const fmt_2[] = " assembled: %8ld";
+
+  ::mdbg::table_printer<
+    ::mdbg::table_cell<fmt_0, ::std::size_t>,
+    ::mdbg::table_cell<fmt_1, ::std::size_t>,
+    ::mdbg::table_cell<fmt_2, ::std::size_t>
+  > printer{50, stdout};
+
   ::mdbg::io::fasta_constumer consumer = 
-    [&processed, &graph, &tg, &tg_lock, &opts](auto&&, auto&& seq) {
+    [&printer, &processed, &graph, &tg, &tg_lock, &opts](auto&&, auto&& seq) {
+      printer.table.increment<0>();
+
       processed.emplace_back(
         ::std::make_unique<processed_pair_t>(
           processed_pair_t{::std::forward<::std::string>(seq), {}}));
       auto const index = processed.size() - 1;
 
-      tg_lock.lock();
-      tg.run([&tg, &tg_lock, ptr = processed.back().get(), &graph, &opts, index]{
+      ::std::scoped_lock<decltype(tg_lock)> scoped_detection{tg_lock};
+      tg.run([
+        &printer, &tg, &tg_lock, ptr = processed.back().get(), 
+        &graph, &opts, index
+      ]{
         ptr->second = ::mdbg::detect_minimizers(ptr->first, index, opts);
+        printer.table.increment<1>();
 
         if (!opts.analysis) {
-          tg_lock.lock();
-          tg.run([&graph, ptr, &opts]{
+          ::std::scoped_lock<decltype(tg_lock)> scoped_construction{tg_lock};
+          tg.run([&printer, &graph, ptr, &opts]{
             ::mdbg::graph::construct(graph, ptr->second, opts);
+              printer.table.increment<2>();
           });
-          tg_lock.unlock();
         }
       });
-      tg_lock.unlock();
     };
-
 
   ::mdbg::io::parse_fasta(opts.input.c_str(), consumer);
   tg.wait();
 
-  ::std::printf(
-    "loaded, processed and assembled a graph from "
-    "sequences from %lu sequences in %ld ms\n", 
-    processed.size(), timer.reset_ms());
+  printer.table.done = true;
 
+  ::std::printf(
+    "\rloaded, processed and assembled a graph "
+    "from %lu sequences in %ld ms\n", 
+    processed.size(), timer.reset_ms());
 
   opts.output_prefix += ".gfa";
 
