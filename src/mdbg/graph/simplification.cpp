@@ -40,11 +40,7 @@ namespace mdbg::graph {
     // = = ===== = =
     // = /       \ =
     //   X       X
-    while (current_node->second.out_edges.size() < 2) {
-      if (current_node->second.out_edges.empty()) {
-        break;
-      }
-
+    while (current_node->second.out_edges.size() == 1) {
       dbg.find(accessor, *current_node->second.out_edges.begin());
       current_node = &(*accessor);
       
