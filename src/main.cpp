@@ -90,7 +90,7 @@ int main(int argc, char** argv) {
 
   ::std::printf(
     "\rloaded, processed and assembled a graph "
-    "from %lu sequences in %ld ms\n", 
+    "from %lu sequences in %ld ms            \n", 
     processed.size(), timer.reset_ms());
 
   opts.output_prefix += ".gfa";
@@ -110,7 +110,7 @@ int main(int argc, char** argv) {
 
   ::std::printf(
     "calculated statistics in %ld ms\n"
-    "minimizers per read:\n"
+    "minimizers per read (l = %ld, d = %f):\n"
     "  median:             %lu\n"
     "  90th    percentile: %lu\n"
     "  99th    percentile: %lu\n"
@@ -118,6 +118,7 @@ int main(int argc, char** argv) {
     "  99.99th percentile: %lu\n"
     "  min:                %lu\n",
     timer.reset_ms(),
+    opts.l, opts.d,
     get_percentile(0.5),
     get_percentile(0.9),
     get_percentile(0.99),

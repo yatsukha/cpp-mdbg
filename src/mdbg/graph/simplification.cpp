@@ -106,17 +106,22 @@ namespace mdbg::graph {
     sequence_index_t const& index,
     command_line_options const& opts
   ) noexcept {
-    out << "H\tVN:Z:1.0" << "\n";
-
-    auto const output_minimizer_name = [&out](auto&& minimizer) {
-      out << "m:" << minimizer->read
-          << ":" << minimizer->offset
-          << "\t";
+    auto get_index = [
+      indexes = minimizer_map_t<::std::size_t>{}, index = 0
+    ](auto&& key) mutable {
+      auto const [iter, is_inserted] = indexes.try_emplace(key, index);
+      index += is_inserted;
+      return iter.value();
     };
 
+    out << "H\tVN:Z:1.0" << "\n";
+
     for (auto const& [starting_minimizer, minimizer_node_pairs] : graph) {
-      out << "S\t";
-      output_minimizer_name(starting_minimizer.minimizer);
+      if (!out) {
+        break;
+      }
+
+      out << "S\t" << get_index(starting_minimizer) << "\t";
 
       ::std::size_t total_len = 0;
 
@@ -152,11 +157,10 @@ namespace mdbg::graph {
       auto const& [prefix_minimizer, prefix_node] = minimizer_node_pairs.back();
 
       for (auto const& out_key : prefix_node.out_edges) {
-        out << "L\t"; 
-        output_minimizer_name(starting_minimizer.minimizer);
-        out << "+\t";
-        output_minimizer_name(out_key.minimizer);
-        out << "+\t" << 0 << "M" << "\n";
+        out << "L\t" << get_index(starting_minimizer) 
+            << "\t+\t" << get_index(out_key) << "\t+\t"
+            << 0 << "M"
+            << "\n";
       }
     }
 

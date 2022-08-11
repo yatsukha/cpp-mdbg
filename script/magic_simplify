@@ -27,6 +27,8 @@
 
 # this script simplifies a gfa graph using gfatools (tip, bubbles)
 
+start=`date +%s`
+
 # boilerplate code for finding folder where this script really resides
 # from https://stackoverflow.com/questions/59895/get-the-source-directory-of-a-bash-script-from-within-the-script-itself
 SOURCE="${BASH_SOURCE[0]}"
@@ -57,7 +59,7 @@ filesize=$(ls -Lon "$base.tmp2.gfa" | awk '{ print $4 }')
 current_graph=$base.tmp2.gfa
 
 if (( filesize > 1000000)); then
-    /usr/bin/time gfatools asm $current_graph  -t 10,50000 -b 100000 -t 10,100000  -b 1000000 -t 10,150000 -b 1000000 -u > $base.tmp3.gfa
+    gfatools asm $current_graph  -t 10,50000 -b 100000 -t 10,100000  -b 1000000 -t 10,150000 -b 1000000 -u > $base.tmp3.gfa
     current_graph=$base.tmp3.gfa
 fi
 
@@ -65,9 +67,9 @@ fi
 if (( filesize > 100000000)); then
     python $DIR/gfa_break_loops.py $current_graph > $base.tmp4.gfa
     current_graph=$base.tmp4.gfa
-    /usr/bin/time gfatools asm $current_graph  -t 10,50000 -b 100000 -t 10,100000  -b 1000000 -t 10,200000 -b 1000000 -u > $base.msimpl.gfa
+    gfatools asm $current_graph  -t 10,50000 -b 100000 -t 10,100000  -b 1000000 -t 10,200000 -b 1000000 -u > $base.msimpl.gfa
 else
-    mv $current_graph$base.msimpl.gfa
+    mv $current_graph $base.msimpl.gfa
 fi
 
 if [[ $@ != *'--keep'* ]]
@@ -75,5 +77,12 @@ then
     rm -rf $base.tmp*.gfa
 fi
 
-
 gfatools gfa2fa $base.msimpl.gfa > $base.msimpl.fa
+
+set +x
+
+end=`date +%s`
+
+
+echo "written results to '$base.msimpl.*'"
+echo "total execution time: $((end-start)) seconds"
